@@ -4,7 +4,7 @@
 # --- PERBAIKAN PATH CONFIG ---
 # Mencari folder secara otomatis agar tidak salah path lagi
 NZR_DIR="$(dirname "$0")"
-source "$NZR_DIR/config.sh" 2>/dev/Run
+source "$NZR_DIR/config.sh" 2>/dev/null
 # ─── FIGLET HEADLINE ───────────────────────────────────────────────
 _nzr_headline() {
   [[ "$SHOW_HEADLINE" != "ON" ]] && return
