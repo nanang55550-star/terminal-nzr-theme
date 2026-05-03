@@ -77,21 +77,25 @@ RPROMPT='$(_nzr_error)'
 _nzr_startup() {
   [[ ! -o interactive ]] && return
   
-  # CLEAR SCREEN SAAT STARTUP
   clear
   
+  # Gunakan folder ~/nzr-theme (sesuai repo GitHub kamu)
+  local THEME_DIR="$HOME/nzr-theme"
+
   # Logo + Headline side-by-side
   if [[ "$SHOW_LOGO" == "ON" && "$SHOW_HEADLINE" == "ON" ]]; then
     echo ""
-    _nzr_side_by_side "$HOME/.nzr-theme/logo.sh" "$HOME/.nzr-theme/user.sh" 6
+    # Pastikan fungsi _nzr_side_by_side ada di lib/utils.sh
+    _nzr_side_by_side "$THEME_DIR/logo.sh" "$THEME_DIR/user.sh" 6
     _nzr_separator "─"
   elif [[ "$SHOW_LOGO" == "ON" ]]; then
     echo ""
-    bash "$HOME/.nzr-theme/logo.sh" 2>/dev/null
+    bash "$THEME_DIR/logo.sh" 2>/dev/null
     _nzr_separator "─"
   elif [[ "$SHOW_HEADLINE" == "ON" ]]; then
     echo ""
-    zsh "$HOME/.nzr-theme/user.sh" 2>/dev/null
+    # Gunakan bash atau source, karena user.sh biasanya berisi perintah echo
+    bash "$THEME_DIR/user.sh" 2>/dev/null
     _nzr_separator "─"
   fi
   
@@ -99,8 +103,9 @@ _nzr_startup() {
   if [[ "$SHOW_USER_INFO" == "ON" ]]; then
     local name="${USER_NAME:-$USER}"
     local msg="${WELCOME_MSG:-Selamat datang, }"
+    # Perbaikan index array RANDOM (zsh array mulai dari 1)
     local colors=($'\e[1;36m' $'\e[1;34m' $'\e[1;35m' $'\e[1;33m' $'\e[1;32m')
-    local color=${colors[$((RANDOM % 5 + 1))]}
+    local color=${colors[$(( (RANDOM % 5) + 1 ))]}
     echo ""
     echo "${color}╭────────────────────────────────────────╮\e[0m"
     echo "${color}│  ${msg}\e[1;37m${name}\e[0m${color}  │\e[0m"
