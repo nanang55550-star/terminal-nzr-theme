@@ -1,262 +1,139 @@
 #!/bin/bash
-# ╔══════════════════════════════════════════════════════════════════╗
-# ║           NZR THEME - AUTO INSTALLER FOR TERMUX                  ║
-# ║         Install, configure, and activate your theme                ║
-# ╚══════════════════════════════════════════════════════════════════╝
+# NZR THEME - AUTO INSTALLER
 
-set -e  # Exit on error
+set -e
 
-# ─── COLORS ───────────────────────────────────────────────────────
-RED='\e[1;31m'
-GREEN='\e[1;32m'
-YELLOW='\e[1;33m'
-BLUE='\e[1;34m'
-CYAN='\e[1;36m'
-RESET='\e[0m'
+# ─── COLORS (pakai printf agar jalan di Termux) ──────────────────
+RED='\033[1;31m'
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[1;34m'
+CYAN='\033[1;36m'
+RESET='\033[0m'
 
-# ─── PATHS ─────────────────────────────────────────────────────────
+# ─── PATHS ───────────────────────────────────────────────────────
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 THEME_DIR="$HOME/.nzr-theme"
 ZSHRC="$HOME/.zshrc"
 BACKUP_DIR="$HOME/.nzr-theme-backups"
 
-# ─── FUNCTIONS ─────────────────────────────────────────────────────
-print_banner() {
-    echo ""
-    echo "${CYAN}╔══════════════════════════════════════════╗${RESET}"
-    echo "${CYAN}║${RESET}     ${YELLOW}NZR THEME INSTALLER${RESET}                ${CYAN}║${RESET}"
-    echo "${CYAN}║${RESET}     ${BLUE}Terminal Customization Tool${RESET}          ${CYAN}║${RESET}"
-    echo "${CYAN}╚══════════════════════════════════════════╝${RESET}"
-    echo ""
+# ─── FUNCTIONS ───────────────────────────────────────────────────
+info() { printf "${BLUE}ℹ ${RESET}%s\n" "$1"; }
+ok()   { printf "${GREEN}✓ ${RESET}%s\n" "$1"; }
+warn() { printf "${YELLOW}⚠ ${RESET}%s\n" "$1"; }
+err()  { printf "${RED}✗ ${RESET}%s\n" "$1"; }
+
+banner() {
+    printf "\n${CYAN}"
+    printf "╔══════════════════════════════════════╗\n"
+    printf "║     NZR THEME INSTALLER              ║\n"
+    printf "║     Terminal Customization           ║\n"
+    printf "╚══════════════════════════════════════╝\n"
+    printf "${RESET}\n"
 }
 
-print_success() {
-    echo "${GREEN}✓${RESET} $1"
-}
+# ─── MAIN ────────────────────────────────────────────────────────
+banner
 
-print_error() {
-    echo "${RED}✗${RESET} $1"
-}
-
-print_info() {
-    echo "${BLUE}ℹ${RESET} $1"
-}
-
-print_warn() {
-    echo "${YELLOW}⚠${RESET} $1"
-}
-
-# ─── CHECK DEPENDENCIES ────────────────────────────────────────────
-check_deps() {
-    print_info "Checking dependencies..."
-    
-    local missing=()
-    
-    if ! command -v git &>/dev/null; then
-        missing+=("git")
+# Cek dependencies
+info "Checking dependencies..."
+for cmd in git zsh figlet; do
+    if ! command -v "$cmd" &>/dev/null; then
+        warn "$cmd not found, installing..."
+        pkg install "$cmd" -y
     fi
-    
-    if ! command -v zsh &>/dev/null; then
-        missing+=("zsh")
-    fi
-    
-    if ! command -v figlet &>/dev/null; then
-        missing+=("figlet")
-    fi
-    
-    if [ ${#missing[@]} -gt 0 ]; then
-        print_warn "Missing packages: ${missing[*]}"
-        echo ""
-        read -p "Install now? [Y/n]: " choice
-        choice=${choice:-Y}
-        
-        if [[ "$choice" =~ ^[Yy]$ ]]; then
-            pkg update -y
-            pkg install "${missing[@]}" -y
-        else
-            print_error "Please install missing packages manually:"
-            echo "  pkg install ${missing[*]}"
-            exit 1
-        fi
-    fi
-    
-    print_success "All dependencies satisfied"
-}
+done
+ok "Dependencies ready"
 
-# ─── BACKUP ────────────────────────────────────────────────────────
-backup_zshrc() {
-    mkdir -p "$BACKUP_DIR"
-    local backup_file="$BACKUP_DIR/.zshrc.backup.$(date +%Y%m%d_%H%M%S)"
-    
-    if [ -f "$ZSHRC" ]; then
-        cp "$ZSHRC" "$backup_file"
-        print_success "Backup created: $backup_file"
-    fi
-}
+# Backup .zshrc
+mkdir -p "$BACKUP_DIR"
+if [ -f "$ZSHRC" ]; then
+    cp "$ZSHRC" "$BACKUP_DIR/.zshrc.backup.$(date +%Y%m%d_%H%M%S)"
+    ok "Backup created"
+fi
 
-# ─── INSTALL THEME ─────────────────────────────────────────────────
-install_theme() {
-    print_info "Installing NZR Theme..."
-    
-    # Remove old installation
-    if [ -d "$THEME_DIR" ]; then
-        print_warn "Removing old installation..."
-        rm -rf "$THEME_DIR"
-    fi
-    
-    # Copy files
-    mkdir -p "$THEME_DIR"
-    cp -r "$REPO_DIR"/* "$THEME_DIR/"
-    
-    # Ensure lib directory exists
-    mkdir -p "$THEME_DIR/lib"
-    
-    print_success "Theme files copied to $THEME_DIR"
-}
+# Install theme files
+info "Installing theme..."
+rm -rf "$THEME_DIR"
+mkdir -p "$THEME_DIR/lib"
 
-# ─── CONFIGURE ───────────────────────────────────────────────────
-configure_theme() {
-    print_info "Configuring theme..."
-    
-    local config_file="$THEME_DIR/config.sh"
-    
-    # Create config if not exists
-    if [ ! -f "$config_file" ]; then
-        cat > "$config_file" <<'EOF'
+# Copy dari repo ke ~/.nzr-theme
+cp "$REPO_DIR"/nzr.zsh "$THEME_DIR/" 2>/dev/null || true
+cp "$REPO_DIR"/config.sh "$THEME_DIR/" 2>/dev/null || true
+cp "$REPO_DIR"/assets/logo.sh "$THEME_DIR/" 2>/dev/null || true
+cp "$REPO_DIR"/assets/user.sh "$THEME_DIR/" 2>/dev/null || true
+cp "$REPO_DIR"/lib/*.sh "$THEME_DIR/lib/" 2>/dev/null || true
+
+ok "Files copied to $THEME_DIR"
+
+# Buat config default kalau belum ada
+if [ ! -f "$THEME_DIR/config.sh" ]; then
+    cat > "$THEME_DIR/config.sh" <<'EOF'
 #!/bin/zsh
-# ╔══════════════════════════════════════════════════════════════════╗
-# ║                    NZR THEME CONFIGURATION                       ║
-# ╚══════════════════════════════════════════════════════════════════╝
-
-# ─── HEADLINE & USER INFO ─────────────────────────────────────────
 HEADLINE_TEXT="NZR-TERMUX"
 HEADLINE_COLOR="cyan"
 WELCOME_MSG="Selamat datang, "
 USER_NAME=""
-
-# ─── FITUR LANJUTAN (ON/OFF) ──────────────────────────────────────
 AUTOSUGGESTIONS="OFF"
 SYNTAX_HIGHLIGHTING="OFF"
 BATGIT_INTEGRATION="OFF"
-
-# ─── TAMPILAN ─────────────────────────────────────────────────────
 SHOW_LOGO="ON"
 SHOW_HEADLINE="ON"
 SHOW_USER_INFO="ON"
-SHOW_SYSTEM_INFO="ON"
 EOF
-    fi
-    
-    # Ask user for customization
-    echo ""
-    echo "${CYAN}─── Personalization ───${RESET}"
-    echo ""
-    
-    read -p "Enter your headline text [NZR-TERMUX]: " headline
-    headline=${headline:-NZR-TERMUX}
-    
-    read -p "Enter your name: " username
-    
-    read -p "Enable Autosuggestions? [y/N]: " autosug
-    [[ "$autosug" =~ ^[Yy]$ ]] && AUTOSUG="ON" || AUTOSUG="OFF"
-    
-    read -p "Enable Syntax Highlighting? [y/N]: " syntax
-    [[ "$syntax" =~ ^[Yy]$ ]] && SYNTAX="ON" || SYNTAX="OFF"
-    
-    # Update config
-    sed -i "s/HEADLINE_TEXT=.*/HEADLINE_TEXT=\"$headline\"/" "$config_file"
-    sed -i "s/USER_NAME=.*/USER_NAME=\"$username\"/" "$config_file"
-    sed -i "s/AUTOSUGGESTIONS=.*/AUTOSUGGESTIONS=\"$AUTOSUG\"/" "$config_file"
-    sed -i "s/SYNTAX_HIGHLIGHTING=.*/SYNTAX_HIGHLIGHTING=\"$SYNTAX\"/" "$config_file"
-    
-    print_success "Configuration saved"
-}
+fi
 
-# ─── ACTIVATE IN ZSHRC ─────────────────────────────────────────────
-activate_theme() {
-    print_info "Activating theme in Zsh..."
-    
-    # Remove old NZR entries
-    if grep -q "nzr-theme" "$ZSHRC" 2>/dev/null; then
-        sed -i '/nzr-theme/d' "$ZSHRC"
-        sed -i '/NZR Theme/d' "$ZSHRC"
-    fi
-    
-    # Add new entry
-    cat >> "$ZSHRC" <<EOF
+# Konfigurasi interaktif
+printf "\n${CYAN}─── Personalization ───${RESET}\n\n"
 
-# ═══ NZR THEME ════════════════════════════════════════════════════
-source $THEME_DIR/nzr.zsh
-EOF
-    
-    print_success "Theme activated in $ZSHRC"
-}
+read -r -p "Headline text [NZR-TERMUX]: " headline
+headline=${headline:-NZR-TERMUX}
 
-# ─── OPTIONAL PLUGINS ──────────────────────────────────────────────
-install_plugins() {
-    echo ""
-    print_info "Optional plugins installation..."
-    echo ""
-    
-    # Autosuggestions
-    if [ ! -d "$HOME/.zsh/zsh-autosuggestions" ]; then
-        read -p "Install Zsh Autosuggestions? [y/N]: " choice
-        if [[ "$choice" =~ ^[Yy]$ ]]; then
-            git clone https://github.com/zsh-users/zsh-autosuggestions \
-                "$HOME/.zsh/zsh-autosuggestions" 2>/dev/null && \
-                print_success "Autosuggestions installed" || \
-                print_error "Failed to install autosuggestions"
-        fi
-    fi
-    
-    # Syntax Highlighting
-    if [ ! -d "$HOME/.zsh/zsh-syntax-highlighting" ]; then
-        read -p "Install Zsh Syntax Highlighting? [y/N]: " choice
-        if [[ "$choice" =~ ^[Yy]$ ]]; then
-            git clone https://github.com/zsh-users/zsh-syntax-highlighting \
-                "$HOME/.zsh/zsh-syntax-highlighting" 2>/dev/null && \
-                print_success "Syntax Highlighting installed" || \
-                print_error "Failed to install syntax highlighting"
-        fi
-    fi
-    
-    # Bat
-    if ! command -v bat &>/dev/null; then
-        read -p "Install Bat (better cat)? [y/N]: " choice
-        if [[ "$choice" =~ ^[Yy]$ ]]; then
-            pkg install bat -y && \
-                print_success "Bat installed" || \
-                print_error "Failed to install bat"
-        fi
-    fi
-}
+read -r -p "Your name: " username
 
-# ─── FINISH ─────────────────────────────────────────────────────────
-finish() {
-    echo ""
-    echo "${GREEN}╔══════════════════════════════════════════╗${RESET}"
-    echo "${GREEN}║${RESET}     ${YELLOW}INSTALLATION COMPLETE!${RESET}             ${GREEN}║${RESET}"
-    echo "${GREEN}╚══════════════════════════════════════════╝${RESET}"
-    echo ""
-    echo "${CYAN}Next steps:${RESET}"
-    echo "  1. Run: ${YELLOW}exec zsh${RESET}"
-    echo "  2. Edit config: ${YELLOW}nano ~/.nzr-theme/config.sh${RESET}"
-    echo "  3. Enjoy your new theme! 🎨"
-    echo ""
-    echo "${BLUE}Need help?${RESET} Visit: https://github.com/nanang55550-star/terminal-nzr-theme"
-    echo ""
-}
+read -r -p "Enable Autosuggestions? [y/N]: " autosug
+[[ "$autosug" =~ ^[Yy]$ ]] && AUTOSUG="ON" || AUTOSUG="OFF"
 
-# ─── MAIN ───────────────────────────────────────────────────────────
-main() {
-    print_banner
-    check_deps
-    backup_zshrc
-    install_theme
-    configure_theme
-    activate_theme
-    install_plugins
-    finish
-}
+read -r -p "Enable Syntax Highlighting? [y/N]: " syntax
+[[ "$syntax" =~ ^[Yy]$ ]] && SYNTAX="ON" || SYNTAX="OFF"
 
-main "$@"
+# Update config
+sed -i "s/HEADLINE_TEXT=.*/HEADLINE_TEXT=\"$headline\"/" "$THEME_DIR/config.sh"
+sed -i "s/USER_NAME=.*/USER_NAME=\"$username\"/" "$THEME_DIR/config.sh"
+sed -i "s/AUTOSUGGESTIONS=.*/AUTOSUGGESTIONS=\"$AUTOSUG\"/" "$THEME_DIR/config.sh"
+sed -i "s/SYNTAX_HIGHLIGHTING=.*/SYNTAX_HIGHLIGHTING=\"$SYNTAX\"/" "$THEME_DIR/config.sh"
+
+ok "Config saved"
+
+# Aktifkan di .zshrc
+info "Activating theme..."
+if grep -q "nzr-theme" "$ZSHRC" 2>/dev/null; then
+    sed -i '/nzr-theme/d' "$ZSHRC"
+fi
+
+echo "" >> "$ZSHRC"
+echo "# NZR Theme" >> "$ZSHRC"
+echo "source $THEME_DIR/nzr.zsh" >> "$ZSHRC"
+
+ok "Theme activated"
+
+# Optional plugins
+printf "\n"
+read -r -p "Install Zsh Autosuggestions? [y/N]: " a
+if [[ "$a" =~ ^[Yy]$ ]]; then
+    git clone https://github.com/zsh-users/zsh-autosuggestions ~/.zsh/zsh-autosuggestions 2>/dev/null && ok "Autosuggestions installed" || warn "Failed/Already exists"
+fi
+
+read -r -p "Install Zsh Syntax Highlighting? [y/N]: " s
+if [[ "$s" =~ ^[Yy]$ ]]; then
+    git clone https://github.com/zsh-users/zsh-syntax-highlighting ~/.zsh/zsh-syntax-highlighting 2>/dev/null && ok "Syntax Highlighting installed" || warn "Failed/Already exists"
+fi
+
+# Finish
+printf "\n${GREEN}"
+printf "╔══════════════════════════════════════╗\n"
+printf "║     INSTALLATION COMPLETE!           ║\n"
+printf "╚══════════════════════════════════════╝\n"
+printf "${RESET}\n"
+printf "Run: ${YELLOW}exec zsh${RESET} to apply\n"
+printf "Edit: ${YELLOW}nano ~/.nzr-theme/config.sh${RESET}\n\n"
