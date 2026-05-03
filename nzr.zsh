@@ -4,16 +4,17 @@
 # ║         Load config, features, and display startup                 ║
 # ╚══════════════════════════════════════════════════════════════════╝
 
-# ─── LOAD CONFIG ───────────────────────────────────────────────────
-source ~/nzr-theme/config.sh 2>/dev/null
+# ─── STARTUP & INITIALIZER ─────────────────────────────────────────
+# Menentukan folder secara otomatis (pilih salah satu yang ada)
+NZR_DIR="$HOME/terminal-nzr-theme"
+[[ ! -d "$NZR_DIR" ]] && NZR_DIR="$HOME/nzr-theme"
 
-# ─── LOAD UTILITIES ────────────────────────────────────────────────
-source ~/nzr-theme/lib/utils.sh 2>/dev/null
-
-# ─── LOAD FEATURES ─────────────────────────────────────────────────
-source ~/nzr-theme/lib/autosuggestions.sh 2>/dev/null
-source ~/nzr-theme/lib/syntax.sh 2>/dev/null
-source ~/nzr-theme/lib/batgit.sh 2>/dev/null
+# Load semua file menggunakan variabel NZR_DIR
+source "$NZR_DIR/config.sh" 2>/dev/null
+source "$NZR_DIR/lib/utils.sh" 2>/dev/null
+source "$NZR_DIR/lib/autosuggestions.sh" 2>/dev/null
+source "$NZR_DIR/lib/syntax.sh" 2>/dev/null
+source "$NZR_DIR/lib/batgit.sh" 2>/dev/null
 
 # ─── ZSH COLORS & SEPARATOR ──────────────────────────────────────
 autoload -U colors && colors
@@ -79,40 +80,18 @@ _nzr_startup() {
   
   clear
   
-  # Gunakan folder ~/nzr-theme (sesuai repo GitHub kamu)
-  local THEME_DIR="$HOME/nzr-theme"
-
-  # Logo + Headline side-by-side
-  if [[ "$SHOW_LOGO" == "ON" && "$SHOW_HEADLINE" == "ON" ]]; then
+  # Jalankan Logo
+  if [[ "$SHOW_LOGO" == "ON" ]]; then
     echo ""
-    # Pastikan fungsi _nzr_side_by_side ada di lib/utils.sh
-    _nzr_side_by_side "$THEME_DIR/logo.sh" "$THEME_DIR/user.sh" 6
-    _nzr_separator "─"
-  elif [[ "$SHOW_LOGO" == "ON" ]]; then
+    bash "$NZR_DIR/logo.sh" 2>/dev/null
     echo ""
-    bash "$THEME_DIR/logo.sh" 2>/dev/null
-    _nzr_separator "─"
-  elif [[ "$SHOW_HEADLINE" == "ON" ]]; then
-    echo ""
-    # Gunakan bash atau source, karena user.sh biasanya berisi perintah echo
-    bash "$THEME_DIR/user.sh" 2>/dev/null
-    _nzr_separator "─"
   fi
-  
-  # Welcome message
-  if [[ "$SHOW_USER_INFO" == "ON" ]]; then
-    local name="${USER_NAME:-$USER}"
-    local msg="${WELCOME_MSG:-Selamat datang, }"
-    # Perbaikan index array RANDOM (zsh array mulai dari 1)
-    local colors=($'\e[1;36m' $'\e[1;34m' $'\e[1;35m' $'\e[1;33m' $'\e[1;32m')
-    local color=${colors[$(( (RANDOM % 5) + 1 ))]}
-    echo ""
-    echo "${color}╭────────────────────────────────────────╮\e[0m"
-    echo "${color}│  ${msg}\e[1;37m${name}\e[0m${color}  │\e[0m"
-    echo "${color}╰────────────────────────────────────────╯\e[0m"
-    echo ""
+
+  # Jalankan Headline & Info (Panggil pakai zsh agar sukses)
+  if [[ "$SHOW_HEADLINE" == "ON" ]]; then
+    zsh "$NZR_DIR/user.sh" 2>/dev/null
   fi
 }
 
-# Jalankan startup
+# Jalankan initializer startup
 _nzr_startup
