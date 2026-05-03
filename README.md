@@ -1,1 +1,1 @@
-# -termux-nzr-theme-
+# termux-nzr-theme
