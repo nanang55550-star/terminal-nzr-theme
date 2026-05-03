@@ -77,22 +77,25 @@ RPROMPT='$(_nzr_error)'
 _nzr_startup() {
   [[ ! -o interactive ]] && return
   
+  # CLEAR SCREEN SAAT STARTUP
+  clear
+  
   # Logo + Headline side-by-side
   if [[ "$SHOW_LOGO" == "ON" && "$SHOW_HEADLINE" == "ON" ]]; then
     echo ""
-    _nzr_side_by_side "$HOME/nzr-theme/logo.sh" "$HOME/nzr-theme/user.sh" 6
+    _nzr_side_by_side "$HOME/.nzr-theme/logo.sh" "$HOME/.nzr-theme/user.sh" 6
     _nzr_separator "─"
   elif [[ "$SHOW_LOGO" == "ON" ]]; then
     echo ""
-    bash "$HOME/nzr-theme/logo.sh" 2>/dev/null
+    bash "$HOME/.nzr-theme/logo.sh" 2>/dev/null
     _nzr_separator "─"
   elif [[ "$SHOW_HEADLINE" == "ON" ]]; then
     echo ""
-    zsh "$HOME/nzr-theme/user.sh" 2>/dev/null
+    zsh "$HOME/.nzr-theme/user.sh" 2>/dev/null
     _nzr_separator "─"
   fi
   
-  # Welcome message (selalu di bawah)
+  # Welcome message
   if [[ "$SHOW_USER_INFO" == "ON" ]]; then
     local name="${USER_NAME:-$USER}"
     local msg="${WELCOME_MSG:-Selamat datang, }"
