@@ -1,11 +1,10 @@
 #!/bin/zsh
 # NZR Theme - User Info & Headline Display
-# Menampilkan figlet headline + welcome message
 
-# Source config
-source ~/nzr-theme/config.sh 2>/dev/null
-
-# ─── FIGLET HEADLINE ───────────────────────────────────────────────
+# --- PERBAIKAN PATH CONFIG ---
+# Mencari folder secara otomatis agar tidak salah path lagi
+NZR_DIR="$(dirname "$0")"
+source "$NZR_DIR/config.sh" 2>/dev/Run# ─── FIGLET HEADLINE ───────────────────────────────────────────────
 _nzr_headline() {
   [[ "$SHOW_HEADLINE" != "ON" ]] && return
   
@@ -80,5 +79,5 @@ _nzr_user_display() {
   _nzr_system_info
 }
 
-# Run if called directly
-[[ "$0" == "$ZSH_ARGZERO" ]] && _nzr_user_display
+# Langsung jalankan fungsinya agar muncul saat dipanggil
+_nzr_user_display
