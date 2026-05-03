@@ -1,0 +1,29 @@
+#!/bin/zsh
+cat <<EOF
+            kkk'         .kk,
+            WMMMo        ;MMc
+            WMWWM0.      ;MMc
+            WMX.0MW;     ;MMc
+            WMX  lMMx    ;MMc
+            WMX   'NMX.  ;MMc
+            WMX     kMWc ;MMc
+     :xxxxxxMMWxxxxxdNMM00MM0o:.
+     ,ccccccWMWc0MMKXMMXMMMMOxXMWl
+            WMNxMMl 0MM dMMMc  cMMo
+            :kMMX.  0MM  '::.   MMO
+            oMMd    0MM       .kMM,
+          .KMX'     0MMOkkkkOXMNx.
+         lMMx       0MMc::::OMW'
+       .0MN,        0MM      xMW;
+      cWMk          0MM       oMMl
+     kMMNdddddddddddNMM        :MMx
+     :lllllllllllllllll         'll'
+
+
+
+
+
+
+
+
+EOF
