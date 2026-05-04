@@ -1,5 +1,4 @@
-#!/bin/zsh
-cat <<EOF
+
             kkk'         .kk,
             WMMMo        ;MMc
             WMWWM0.      ;MMc
@@ -22,10 +21,3 @@ cat <<EOF
 
 
 
-
-
-
-
-EOF
-#  akhir file logo.sh
-printf "\033[18A"
