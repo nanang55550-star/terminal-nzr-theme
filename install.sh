@@ -45,26 +45,11 @@ for cmd in git zsh figlet; do
 done
 ok "Dependencies ready"
 
-# Backup .zshrc
-mkdir -p "$BACKUP_DIR"
-if [ -f "$ZSHRC" ]; then
-    cp "$ZSHRC" "$BACKUP_DIR/.zshrc.backup.$(date +%Y%m%d_%H%M%S)"
-    ok "Backup created"
-fi
 
 # Install theme files
 info "Installing theme..."
 rm -rf "$THEME_DIR"
 mkdir -p "$THEME_DIR/lib"
-
-# Copy dari repo ke ~/.nzr-theme
-cp "$REPO_DIR"/nzr.zsh "$THEME_DIR/" 2>/dev/null || true
-cp "$REPO_DIR"/config.sh "$THEME_DIR/" 2>/dev/null || true
-cp "$REPO_DIR"/assets/logo.sh "$THEME_DIR/" 2>/dev/null || true
-cp "$REPO_DIR"/assets/user.sh "$THEME_DIR/" 2>/dev/null || true
-cp "$REPO_DIR"/lib/*.sh "$THEME_DIR/lib/" 2>/dev/null || true
-
-ok "Files copied to $THEME_DIR"
 
 # Buat config default kalau belum ada
 if [ ! -f "$THEME_DIR/config.sh" ]; then
