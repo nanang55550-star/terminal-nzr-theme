@@ -27,3 +27,5 @@ cat <<EOF
 
 
 EOF
+#  akhir file logo.sh
+printf "\033[18A"
