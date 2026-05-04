@@ -7,24 +7,25 @@ source "$NZR_DIR/config.sh" 2>/dev/null
 # ─── LOGO (dari logo.sh) ────────────────────────────────────────
 _nzr_logo() {
   cat <<'EOF'
-            kkk'              .kk,
-            WMMMo             ;MMc
-            WWWWMO.           ;MMc
-            WMX.OMW;          ;MMc
-            WMX  lMMx         ;MMc
-            WMX   'NMX.       ;MMc
+            kkk'         .kk,
+            WMMMo        ;MMc
+            WMWWM0.      ;MMc
+            WMX.0MW;     ;MMc
+            WMX  lMMx    ;MMc
+            WMX   'NMX.  ;MMc
             WMX     kMWc ;MMc
-       :xxxxxxMMWxxxxxdNMM00MMOo:.
-    ,ccccccWMWc0MMKXMMXMMMM0xXMWl
-            WMWxMMI 0MM dMMMc  cMMo
+     :xxxxxxMMWxxxxxdNMM00MM0o:.
+     ,ccccccWMWc0MMKXMMXMMMMOxXMWl
+            WMNxMMl 0MM dMMMc  cMMo
             :kMMX.  0MM  '::.   MMO
             oMMd    0MM       .kMM,
-            .KMX'   0MMOkkkk0XMNx.
-            lMMx    0MMc::::OMW'
-            .OMN,   0MM      xMW;
-            cWMk    0MM       oMMl
-            kMMNddddddddddNMM      :MMx
-            :lllllllllllllllll      'll'
+          .KMX'     0MMOkkkkOXMNx.
+         lMMx       0MMc::::OMW'
+       .0MN,        0MM      xMW;
+      cWMk          0MM       oMMl
+     kMMNdddddddddddNMM        :MMx
+     :lllllllllllllllll         'll'
+
 EOF
 }
 
