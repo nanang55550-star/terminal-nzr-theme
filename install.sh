@@ -11,11 +11,10 @@ BLUE='\033[1;34m'
 CYAN='\033[1;36m'
 RESET='\033[0m'
 
-# ─── PATHS ───────────────────────────────────────────────────────
+# ─── PATHS ───
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
-THEME_DIR="$HOME/.nzr-theme"
+THEME_DIR="$REPO_DIR"
 ZSHRC="$HOME/.zshrc"
-BACKUP_DIR="$HOME/.nzr-theme-backups"
 
 # ─── FUNCTIONS ───────────────────────────────────────────────────
 info() { printf "${BLUE}ℹ ${RESET}%s\n" "$1"; }
