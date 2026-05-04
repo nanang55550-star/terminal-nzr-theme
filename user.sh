@@ -10,30 +10,41 @@ _nzr_headline() {
   [[ "$SHOW_HEADLINE" != "ON" ]] && return
   
   local text="${HEADLINE_TEXT:-NZR-TERMUX}"
-  local color="${HEADLINE_COLOR:-lolcat}"
+  local color="${HEADLINE_COLOR:-cyan}"
   
-  # Cek figlet tersedia
+  # --- SETTING JARAK DI SINI ---
+  local padding="\033[38C" # 38C artinya geser 38 spasi ke kanan
+  # ----------------------------
+
   if ! command -v figlet &>/dev/null; then
-    echo "\e[1;33m[Install figlet: pkg install figlet]\e[0m"
+    printf "${padding}\e[1;33m[Install figlet]\e[0m\n"
     return
   fi
-  
+
+  # Logika Warna Otomatis
   case "$color" in
     lolcat)
       if command -v lolcat &>/dev/null; then
-        figlet -f block "$text" | lolcat
+        # Ambil output figlet, lalu tambah padding di setiap barisnya
+        figlet -f block "$text" | sed "s/^/${padding}/" | lolcat
       else
-        echo "\e[1;36m$(figlet -f block "$text")\e[0m"
-        echo "\e[1;33m[Install lolcat: gem install lolcat]\e[0m"
+        figlet -f block "$text" | sed "s/^/${padding}/" | printf "\e[1;36m$(cat)\e[0m\n"
       fi
       ;;
-    cyan)    echo "\e[1;36m$(figlet -f block "$text")\e[0m" ;;
-    blue)    echo "\e[1;34m$(figlet -f block "$text")\e[0m" ;;
-    green)   echo "\e[1;32m$(figlet -f block "$text")\e[0m" ;;
-    yellow)  echo "\e[1;33m$(figlet -f block "$text")\e[0m" ;;
-    red)     echo "\e[1;31m$(figlet -f block "$text")\e[0m" ;;
-    magenta) echo "\e[1;35m$(figlet -f block "$text")\e[0m" ;;
-    *)       echo "\e[1;36m$(figlet -f block "$text")\e[0m" ;;
+    *)
+      # Untuk warna selain lolcat
+      local color_code="\e[1;36m" # default cyan
+      [[ "$color" == "blue" ]] && color_code="\e[1;34m"
+      [[ "$color" == "green" ]] && color_code="\e[1;32m"
+      [[ "$color" == "yellow" ]] && color_code="\e[1;33m"
+      [[ "$color" == "red" ]] && color_code="\e[1;31m"
+      [[ "$color" == "magenta" ]] && color_code="\e[1;35m"
+
+      # Cetak dengan padding dan warna
+      figlet -f block "$text" | sed "s/^/${padding}/" | while read -r line; do
+        printf "${color_code}%s\e[0m\n" "$line"
+      done
+      ;;
   esac
 }
 
