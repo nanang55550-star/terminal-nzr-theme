@@ -45,27 +45,11 @@ done
 ok "Dependencies ready"
 
 
-# Install theme files
-info "Installing theme..."
-rm -rf "$THEME_DIR"
-mkdir -p "$THEME_DIR/lib"
-
-# Buat config default kalau belum ada
-if [ ! -f "$THEME_DIR/config.sh" ]; then
-    cat > "$THEME_DIR/config.sh" <<'EOF'
-#!/bin/zsh
-HEADLINE_TEXT="NZR-TERMUX"
-HEADLINE_COLOR="cyan"
-WELCOME_MSG="Selamat datang, "
-USER_NAME=""
-AUTOSUGGESTIONS="OFF"
-SYNTAX_HIGHLIGHTING="OFF"
-BATGIT_INTEGRATION="OFF"
-SHOW_LOGO="ON"
-SHOW_HEADLINE="ON"
-SHOW_USER_INFO="ON"
-EOF
-fi
+# ─── PERMISSIONS ───
+info "Setting permissions..."
+chmod +x "$THEME_DIR"/*.sh
+chmod +x "$THEME_DIR"/lib/*.sh 2>/dev/null || true
+ok "Permissions ready"
 
 # Konfigurasi interaktif
 printf "\n${CYAN}─── Personalization ───${RESET}\n\n"
