@@ -1,97 +1,106 @@
 #!/bin/zsh
 # ╔══════════════════════════════════════════════════════════════════╗
-# ║                    NZR THEME - MAIN FILE                         ║
-# ║         Load config, features, and display startup                 ║
+# ║                  NZR THEME — main.sh (FINAL)                     ║
+# ║         Source ini dari .zshrc untuk aktifkan theme              ║
 # ╚══════════════════════════════════════════════════════════════════╝
 
-# ─── STARTUP & INITIALIZER ─────────────────────────────────────────
-# Menentukan folder secara otomatis (pilih salah satu yang ada)
-NZR_DIR="$HOME/terminal-nzr-theme"
-[[ ! -d "$NZR_DIR" ]] && NZR_DIR="$HOME/nzr-theme"
+# ─── PATH (auto-detect, tidak perlu edit manual) ──────────────────
+# ${0:A:h} = path absolut folder script ini di zsh
+NZR_DIR="${0:A:h}"
 
-# Load semua file menggunakan variabel NZR_DIR
-source "$NZR_DIR/config.sh" 2>/dev/null
-source "$NZR_DIR/lib/utils.sh" 2>/dev/null
-source "$NZR_DIR/lib/autosuggestions.sh" 2>/dev/null
-source "$NZR_DIR/lib/syntax.sh" 2>/dev/null
-source "$NZR_DIR/lib/batgit.sh" 2>/dev/null
+# Fallback jika dipanggil dari .zshrc via `source`
+if [[ -z "$NZR_DIR" || "$NZR_DIR" == "." ]]; then
+  NZR_DIR="$HOME/terminal-nzr-theme"
+  [[ ! -d "$NZR_DIR" ]] && NZR_DIR="$HOME/nzr-theme"
+fi
 
-# ─── ZSH COLORS & SEPARATOR ──────────────────────────────────────
+# ─── LOAD CONFIG & LIBS ───────────────────────────────────────────
+source "$NZR_DIR/config.sh"                          2>/dev/null
+
+# Fitur opsional — hanya load jika ON dan file ada
+[[ "$AUTOSUGGESTIONS"     == "ON" ]] && source "$NZR_DIR/lib/autosuggestions.sh"  2>/dev/null
+[[ "$SYNTAX_HIGHLIGHTING" == "ON" ]] && source "$NZR_DIR/lib/syntax.sh"           2>/dev/null
+[[ "$BATGIT_INTEGRATION"  == "ON" ]] && \
+  command -v bat &>/dev/null && command -v git &>/dev/null && \
+  source "$NZR_DIR/lib/batgit.sh"                                                  2>/dev/null
+
+# ─── ZSH COLORS ───────────────────────────────────────────────────
 autoload -U colors && colors
 SEP=$'\ue0b0'
 
-# ─── GIT INFO ────────────────────────────────────────────────────
-_nzr_git() {
-  local branch dirty
-  branch=$(git symbolic-ref --short HEAD 2>/dev/null) || return
-  dirty=$(git status --porcelain 2>/dev/null)
-  
-  if [[ -n "$dirty" ]]; then
-    echo "%{$fg[blue]%}%{$bg[yellow]%}${SEP}%{$fg[black]%}  ${branch} %{$fg[red]%}✗%{$reset_color%}"
-  else
-    echo "%{$fg[blue]%}%{$bg[yellow]%}${SEP}%{$fg[black]%}  ${branch} %{$fg[black]%}✓%{$reset_color%}"
-  fi
-}
-
-# ─── STATUS BAR ──────────────────────────────────────────────────
+# ─── STATUS BAR ───────────────────────────────────────────────────
 _nzr_status() {
-  local ram disk bat
-  ram=$(free -m 2>/dev/null | awk 'NR==2{printf "%dM/%dM", $3,$2}')
-  disk=$(df -h . 2>/dev/null | awk 'NR==2{printf "%s/%s", $3,$2}')
-  bat=$(termux-battery-status 2>/dev/null | grep percentage | awk '{gsub(/,/,"",$2); print $2}')
-  
-  local out="%{$bg[yellow]%}%{$fg[black]%} RAM: ${ram} "
-  if [[ -n "$bat" ]]; then
-    out+="%{$bg[green]%}%{$fg[yellow]%}${SEP}%{$fg[black]%} BAT: ${bat}%% "
-  fi
-  out+="%{$bg[magenta]%}%{$fg[yellow]%}${SEP}%{$fg[black]%} DISK: ${disk} %{$reset_color%}%{$fg[magenta]%}${SEP}%{$reset_color%}"
-  echo "$out"
+  local ram disk
+  ram=$(free -m 2>/dev/null | awk 'NR==2{printf "%dM/%dM",$3,$2}')
+  [[ -z "$ram" ]] && ram="N/A"
+  disk=$(df -h . 2>/dev/null | awk 'NR==2{printf "%s/%s",$3,$2}')
+  [[ -z "$disk" ]] && disk="N/A"
+
+  echo -n "%{$bg[cyan]%}%{$fg[white]%} %n@%m "
+  echo -n "%{$bg[yellow]%}%{$fg[cyan]%}${SEP}%{$fg[black]%} RAM: ${ram} "
+  echo -n "%{$bg[magenta]%}%{$fg[yellow]%}${SEP}%{$fg[white]%} DISK: ${disk} "
+  echo -n "%{$reset_color%}%{$fg[magenta]%}${SEP}%{$reset_color%}"
 }
 
-# ─── ERROR SEGMENT ─────────────────────────────────────────────────
+# ─── DIRECTORY + GIT ──────────────────────────────────────────────
+_nzr_dir_git() {
+  local branch dirty
+
+  branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+
+  if [[ -n "$branch" ]]; then
+    dirty=$(git status --porcelain 2>/dev/null)
+    if [[ -n "$dirty" ]]; then
+      echo -n "%{$bg[blue]%}%{$fg[white]%} %~ "
+      echo -n "%{$bg[red]%}%{$fg[blue]%}${SEP}%{$fg[white]%}  ${branch} ✗ "
+      echo -n "%{$reset_color%}%{$fg[red]%}${SEP}%{$reset_color%}"
+    else
+      echo -n "%{$bg[blue]%}%{$fg[white]%} %~ "
+      echo -n "%{$bg[green]%}%{$fg[blue]%}${SEP}%{$fg[white]%}  ${branch} ✓ "
+      echo -n "%{$reset_color%}%{$fg[green]%}${SEP}%{$reset_color%}"
+    fi
+  else
+    echo -n "%{$bg[blue]%}%{$fg[white]%} %~ "
+    echo -n "%{$reset_color%}%{$fg[blue]%}${SEP}%{$reset_color%}"
+  fi
+}
+
+# ─── ERROR SEGMENT ────────────────────────────────────────────────
 _nzr_error() {
   local code=$?
-  [[ $code -eq 0 ]] && echo "%{$fg[green]%}✓%{$reset_color%}" && return
-  
+  [[ $code -eq 0 ]] && return
+
   local icon
   case $code in
-    127) icon="? cmd" ;;
-    126) icon="✘ perm" ;;
-    130) icon="✘ ctrl-c" ;;
-    1)   icon="✘ err" ;;
-    2)   icon="✘ usage" ;;
-    *)   icon="✘ $code" ;;
+    127) icon="? cmd"     ;;
+    126) icon="✘ perm"    ;;
+    130) icon="✘ ctrl-c"  ;;
+    1)   icon="✘ err"     ;;
+    2)   icon="✘ usage"   ;;
+    *)   icon="✘ $code"   ;;
   esac
+
   echo "%{$bg[red]%}%{$fg[white]%} ${icon} %{$reset_color%}%{$fg[red]%}${SEP}%{$reset_color%}"
 }
 
 # ─── PROMPT ───────────────────────────────────────────────────────
 setopt PROMPT_SUBST
 
-PROMPT='%{$fg_bold[cyan]%}%n@%m%{$reset_color%}: %{$fg[cyan]%}%D{%H:%M:%S}%{$reset_color%} $(_nzr_status)
-%{$fg[blue]%}%~%{$reset_color%} $(_nzr_git)
-%{$fg[cyan]%}❯%{$reset_color%} '
+PROMPT='
+$(_nzr_status)
+$(_nzr_dir_git)
+%{$bg[black]%}%{$fg[white]%}${SEP} ➜ %{$reset_color%}%{$fg[black]%}${SEP}%{$reset_color%} '
 
 RPROMPT='$(_nzr_error)'
 
-# ─── STARTUP DISPLAY ─────────────────────────────────────────────
+# ─── STARTUP DISPLAY ──────────────────────────────────────────────
 _nzr_startup() {
+  # Hanya jalan di shell interaktif
   [[ ! -o interactive ]] && return
-  
-  clear
-  
-  # Jalankan Logo
-  if [[ "$SHOW_LOGO" == "ON" ]]; then
-    echo ""
-    bash "$NZR_DIR/logo.sh" 2>/dev/null
-    echo ""
-  fi
 
-  # Jalankan Headline & Info (Panggil pakai zsh agar sukses)
-  if [[ "$SHOW_HEADLINE" == "ON" ]]; then
-    zsh "$NZR_DIR/user.sh" 2>/dev/null
+  if [[ "$SHOW_LOGO" == "ON" || "$SHOW_HEADLINE" == "ON" || "$SHOW_USER_INFO" == "ON" ]]; then
+    zsh "$NZR_DIR/display.sh" 2>/dev/null
   fi
 }
 
-# Jalankan initializer startup
 _nzr_startup
