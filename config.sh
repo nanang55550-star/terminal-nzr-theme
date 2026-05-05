@@ -1,22 +1,26 @@
 #!/bin/zsh
 # ╔══════════════════════════════════════════════════════════════════╗
-# ║                    NZR THEME CONFIGURATION                         ║
-# ║         Ubah ON/OFF di bawah ini untuk aktifkan fitur              ║
+# ║                  NZR THEME — config.sh (FINAL)                   ║
+# ║          Edit bagian ini untuk kustomisasi tampilan               ║
 # ╚══════════════════════════════════════════════════════════════════╝
 
-# ─── HEADLINE & USER INFO ─────────────────────────────────────────
-HEADLINE_TEXT="NZR-TERMUX"      # Teks untuk figlet headline
-HEADLINE_COLOR="lolcat"         # lolcat, rainbow, cyan, blue, green, yellow, red, magenta
-WELCOME_MSG="Selamat datang, "  # Pesan sebelum nama user
-USER_NAME="$USER"               # Nama user (auto), bisa ganti manual
+# ─── IDENTITAS USER ───────────────────────────────────────────────
+HEADLINE_TEXT="NZR-RD"           # Teks besar di headline (figlet)
+USER_NAME="D"               # Nama di welcome box
+WELCOME_MSG="Selamat datang, "   # Pesan sebelum nama
 
-# ─── FITUR LANJUTAN (ON/OFF) ──────────────────────────────────────
-AUTOSUGGESTIONS="OFF"           # Zsh Autosuggestions (ON/OFF)
-SYNTAX_HIGHLIGHTING="OFF"       # Syntax Highlighting (ON/OFF)
-BATGIT_INTEGRATION="OFF"        # Bat + Git Integration (ON/OFF)
+# ─── WARNA HEADLINE ───────────────────────────────────────────────
+# Pilihan: cyan | blue | green | yellow | magenta | white | lolcat
+# lolcat = rainbow (butuh: pkg install lolcat)
+HEADLINE_COLOR="cyan"
 
-# ─── TAMPILAN ─────────────────────────────────────────────────────
-SHOW_LOGO="ON"                  # Tampilkan logo (ON/OFF)
-SHOW_HEADLINE="ON"              # Tampilkan headline figlet (ON/OFF)
-SHOW_USER_INFO="ON"             # Tampilkan info user/welcome (ON/OFF)
-SHOW_SYSTEM_INFO="ON"           # Tampilkan OS, Host, dll (ON/OFF)
+# ─── TAMPILAN (ON/OFF) ────────────────────────────────────────────
+SHOW_LOGO="ON"          # Logo ASCII NZR di atas
+SHOW_HEADLINE="ON"      # Teks besar figlet
+SHOW_USER_INFO="ON"     # Welcome box dengan nama user
+SHOW_SYSTEM_INFO="ON"   # Info OS, RAM, Disk, dll di kanan
+
+# ─── FITUR ZSH ────────────────────────────────────────────────────
+AUTOSUGGESTIONS="ON"        # Saran perintah (zsh-autosuggestions)
+SYNTAX_HIGHLIGHTING="ON"    # Warna syntax (zsh-syntax-highlighting)
+BATGIT_INTEGRATION="OFF"    # Integrasi bat + git diff (butuh: bat, git)
