@@ -1,7 +1,7 @@
 #!/bin/zsh
 # ╔══════════════════════════════════════════════════════════════════╗
-# ║               NZR THEME — display.sh (FINAL)                    ║
-# ║   Layout: clear → logo tengah → welcome → kotak headline+neo    ║
+# ║               NZR THEME — display.sh (FINAL v3)                 ║
+# ║   Universal: Android Termux · Linux · macOS                     ║
 # ╚══════════════════════════════════════════════════════════════════╝
 
 NZR_DIR="${ZSH_SCRIPT:A:h}"
@@ -33,6 +33,7 @@ _hl_color() {
   esac
 }
 
+# Terminal width — $COLUMNS paling reliable di zsh
 _tw() {
   local w="${COLUMNS:-0}"
   (( w > 0 )) && { echo "$w"; return; }
@@ -41,14 +42,19 @@ _tw() {
   echo 80
 }
 
+# Panjang visual string (strip ANSI escape codes)
 _vl() {
   local s; s=$(printf '%s' "$1" | sed $'s/\x1b\\[[0-9;]*[mKJHABCDGsu]//g')
   printf '%s' "${#s}"
 }
 
+# Center berdasarkan lebar visual yang sudah diketahui
+# $1=teks $2=lebar_terminal $3=lebar_visual_override (opsional)
 _center() {
-  local t="$1" w="$2" vl pad
-  vl=$(_vl "$t"); pad=$(( (w - vl) / 2 ))
+  local t="$1" w="$2"
+  local vl="${3:-}"
+  [[ -z "$vl" ]] && vl=$(_vl "$t")
+  local pad=$(( (w - vl) / 2 ))
   (( pad < 0 )) && pad=0
   printf "%${pad}s%s\n" "" "$t"
 }
@@ -97,13 +103,13 @@ _nzr_neo() {
   upt=$(uptime -p 2>/dev/null | sed 's/up //')
   [[ -z "$upt" ]] && upt=$(uptime 2>/dev/null | sed 's/.*up //;s/,.*//' | xargs)
   [[ -z "$upt" ]] && upt="N/A"
-  printf "${CY}${BOLD}OS${R}:     ${WH}%s${R}\n"     "$os"
+  printf "${CY}${BOLD}OS${R}:     ${WH}%s${R}\n"    "$os"
   printf "${CY}${BOLD}Host${R}:   ${WH}%s@%s${R}\n" "$usr" "$host"
-  printf "${CY}${BOLD}Shell${R}:  ${WH}%s${R}\n"     "$sh_v"
-  printf "${CY}${BOLD}RAM${R}:    ${WH}%s${R}\n"     "$ram"
-  printf "${CY}${BOLD}Disk${R}:   ${WH}%s${R}\n"     "$disk"
-  printf "${CY}${BOLD}Uptime${R}: ${WH}%s${R}\n"     "$upt"
-  printf "${CY}${BOLD}Time${R}:   ${WH}%s${R}\n"     "$tim"
+  printf "${CY}${BOLD}Shell${R}:  ${WH}%s${R}\n"    "$sh_v"
+  printf "${CY}${BOLD}RAM${R}:    ${WH}%s${R}\n"    "$ram"
+  printf "${CY}${BOLD}Disk${R}:   ${WH}%s${R}\n"    "$disk"
+  printf "${CY}${BOLD}Uptime${R}: ${WH}%s${R}\n"    "$upt"
+  printf "${CY}${BOLD}Time${R}:   ${WH}%s${R}\n"    "$tim"
 }
 
 _nzr_headline() {
@@ -134,7 +140,7 @@ _nzr_welcome() {
   local cols=("$CY" "$BL" "$MG" "$YL" "$GR")
   local c="${cols[$((RANDOM % 5))]}"
   local inner="${msg}${name}"
-  local ilen; ilen=$(_vl "$inner")
+  local ilen; ilen=$(( ${#msg} + ${#name} ))
   local hline; hline=$(_rep "─" $(( ilen + 2 )))
   printf "${c}╭%s╮${R}\n" "$hline"
   printf "${c}│ %s${WH}${BOLD}%s${R}${c} │${R}\n" "$msg" "$name"
@@ -144,33 +150,46 @@ _nzr_welcome() {
 _nzr_display() {
   local TW; TW=$(_tw)
 
-  # ══ STEP 1: CLEAR ══════════════════════════════════════════
+  # ══ 1. CLEAR ══════════════════════════════════════════════
   clear
 
-  # ══ STEP 2: LOGO di tengah atas ═══════════════════════════
+  # ══ 2. LOGO (tengah, hijau) ═══════════════════════════════
   if [[ "$SHOW_LOGO" == "ON" ]]; then
     local logo_lines=()
     while IFS= read -r l; do logo_lines+=("$l"); done < <(_nzr_logo)
     printf '%s' "$GR"
-    for l in "${logo_lines[@]}"; do _center "$l" "$TW"; done
+    for l in "${logo_lines[@]}"; do
+      # Logo adalah plain ASCII — panjang visual = panjang string biasa
+      local vl=${#l}
+      _center "$l" "$TW" "$vl"
+    done
     printf '%s\n' "$R"
   fi
 
-  # ══ STEP 3: WELCOME di tengah (bawah logo) ════════════════
+  # ══ 3. WELCOME (tengah, di bawah logo) ════════════════════
   if [[ "$SHOW_USER_INFO" == "ON" ]]; then
     local wel_lines=()
     while IFS= read -r l; do wel_lines+=("$l"); done < <(_nzr_welcome)
-    for l in "${wel_lines[@]}"; do _center "$l" "$TW"; done
+    local name="${USER_NAME:-${USER:-user}}"
+    local msg="${WELCOME_MSG:-Selamat datang, }"
+    # Lebar box welcome = panjang teks + 4 (│ spasi ... spasi │)
+    local wel_w=$(( ${#msg} + ${#name} + 4 ))
+    for l in "${wel_lines[@]}"; do
+      _center "$l" "$TW" "$wel_w"
+    done
     printf '\n'
   fi
 
-  # ══ STEP 4: KOTAK headline (kiri) + neofetch (kanan) ══════
-  # Kumpulkan neofetch dulu → hitung lebar kolom kanan
+  # ══ 4. KOTAK headline (kiri) + neofetch (kanan) ═══════════
+
+  # Kumpulkan neofetch → hitung lebar kolom kanan
   local neo_lines=() v
   while IFS= read -r l; do neo_lines+=("$l"); done < <(_nzr_neo)
 
   local NEO_W=0
-  for l in "${neo_lines[@]}"; do v=$(_vl "$l"); (( v > NEO_W )) && NEO_W=$v; done
+  for l in "${neo_lines[@]}"; do
+    v=$(_vl "$l"); (( v > NEO_W )) && NEO_W=$v
+  done
   local NC=$(( NEO_W + 2 ))
 
   # Estimasi kolom kiri → set figlet width supaya pas
@@ -178,40 +197,55 @@ _nzr_display() {
   (( HC_est < 10 )) && HC_est=10
   export _NZR_HL_W=$(( HC_est - 2 ))
 
-  # Generate headline dengan width yang sudah proporsional
+  # Generate headline
   local hl_lines=()
   if [[ "$SHOW_HEADLINE" == "ON" ]]; then
     while IFS= read -r l; do hl_lines+=("$l"); done < <(_nzr_headline)
   fi
 
-  # Hitung ulang HC dari konten aktual headline
+  # Hitung HC dari konten aktual headline
   local HL_W=0
-  for l in "${hl_lines[@]}"; do v=$(_vl "$l"); (( v > HL_W )) && HL_W=$v; done
+  for l in "${hl_lines[@]}"; do
+    v=$(_vl "$l"); (( v > HL_W )) && HL_W=$v
+  done
   local HC=$(( HL_W + 2 )); (( HC < 6 )) && HC=6
 
-  # Proporsikan jika melebihi terminal
+  # Proporsikan jika terlalu lebar
   local BOX=$(( HC + NC + 6 ))
   if (( BOX > TW )); then
     local avail=$(( TW - 6 ))
     HC=$(( avail * HC / (HC + NC) )); (( HC < 6 )) && HC=6
     NC=$(( avail - HC ));            (( NC < 6 )) && NC=6
+    BOX=$(( HC + NC + 6 ))
   fi
 
+  # ── KUNCI FIX CENTER: hitung panjang border SECARA EKSPLISIT ──
+  # Box-drawing chars (║ ═ ╔ dll) = 1 karakter terminal di Termux
+  # Panjang border = HC+2 + NC+2 + 3 chars (╔ ╦ ╗)
+  local border_w=$(( HC + NC + 6 ))
+
   _hborder() {
-    local s="${1}"
-    s+=$(_rep "═" $(( HC + 2 ))); s+="${2}"
-    s+=$(_rep "═" $(( NC + 2 ))); s+="${3}"
-    _center "$s" "$TW"
+    local L="$1" M="$2" Rr="$3"
+    local s="${L}"
+    s+=$(_rep "═" $(( HC + 2 )))
+    s+="$M"
+    s+=$(_rep "═" $(( NC + 2 )))
+    s+="$Rr"
+    # Gunakan border_w sebagai lebar visual yang sudah diketahui
+    _center "$s" "$TW" "$border_w"
   }
 
   _row() {
-    local lraw="$1" rcol="$2" lv rv lpad rpad lcol lsp rsp
+    local lraw="$1" rcol="$2"
+    local lv rv lpad rpad lcol lsp rsp
     lv=$(_vl "$lraw"); rv=$(_vl "$rcol")
     lpad=$(( HC - lv - 1 )); rpad=$(( NC - rv - 1 ))
     (( lpad < 0 )) && lpad=0; (( rpad < 0 )) && rpad=0
     lcol=""; [[ -n "$lraw" ]] && lcol="${CY}${lraw}${R}"
     lsp=$(_rep " " "$lpad"); rsp=$(_rep " " "$rpad")
-    _center "║ ${lcol}${lsp} ║ ${rcol}${rsp} ║" "$TW"
+    local row="║ ${lcol}${lsp} ║ ${rcol}${rsp} ║"
+    # Lebar visual row = border_w (sama dengan border)
+    _center "$row" "$TW" "$border_w"
   }
 
   local max=$(( ${#hl_lines[@]} > ${#neo_lines[@]} ? ${#hl_lines[@]} : ${#neo_lines[@]} ))
