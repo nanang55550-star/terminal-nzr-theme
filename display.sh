@@ -1,7 +1,7 @@
 #!/bin/zsh
 # ╔══════════════════════════════════════════════════════════════════╗
-# ║               NZR THEME — display.sh (FINAL v3)                 ║
-# ║   Universal: Android Termux · Linux · macOS                     ║
+# ║               NZR THEME — display.sh (FINAL v4)                 ║
+# ║   Logo warna mengikuti HEADLINE_COLOR di config.sh              ║
 # ╚══════════════════════════════════════════════════════════════════╝
 
 NZR_DIR="${ZSH_SCRIPT:A:h}"
@@ -21,19 +21,23 @@ R=$'\e[0m';   BOLD=$'\e[1m'
 GR=$'\e[1;32m'; CY=$'\e[1;36m'; BL=$'\e[1;34m'
 WH=$'\e[1;37m'; YL=$'\e[1;33m'; MG=$'\e[1;35m'
 
-_hl_color() {
+# Warna dari config — dipakai untuk logo DAN headline
+_theme_color() {
   case "${HEADLINE_COLOR:-cyan}" in
     blue)    printf '%s' "$BL" ;;
     green)   printf '%s' "$GR" ;;
     yellow)  printf '%s' "$YL" ;;
     magenta) printf '%s' "$MG" ;;
     white)   printf '%s' "$WH" ;;
-    lolcat)  command -v lolcat &>/dev/null && printf '' || printf '%s' "$CY" ;;
-    *)       printf '%s' "$CY" ;;
+    lolcat)  printf '%s' ""    ;;  # kosong = akan di-pipe ke lolcat
+    *)       printf '%s' "$CY" ;;  # default cyan
   esac
 }
 
-# Terminal width — $COLUMNS paling reliable di zsh
+_is_lolcat() {
+  [[ "$HEADLINE_COLOR" == "lolcat" ]] && command -v lolcat &>/dev/null
+}
+
 _tw() {
   local w="${COLUMNS:-0}"
   (( w > 0 )) && { echo "$w"; return; }
@@ -42,17 +46,13 @@ _tw() {
   echo 80
 }
 
-# Panjang visual string (strip ANSI escape codes)
 _vl() {
   local s; s=$(printf '%s' "$1" | sed $'s/\x1b\\[[0-9;]*[mKJHABCDGsu]//g')
   printf '%s' "${#s}"
 }
 
-# Center berdasarkan lebar visual yang sudah diketahui
-# $1=teks $2=lebar_terminal $3=lebar_visual_override (opsional)
 _center() {
-  local t="$1" w="$2"
-  local vl="${3:-}"
+  local t="$1" w="$2" vl="${3:-}"
   [[ -z "$vl" ]] && vl=$(_vl "$t")
   local pad=$(( (w - vl) / 2 ))
   (( pad < 0 )) && pad=0
@@ -65,7 +65,8 @@ _rep() {
   printf '%s' "$s"
 }
 
-_nzr_logo() {
+# ─── LOGO ─────────────────────────────────────────────────────────
+_nzr_logo_raw() {
   cat <<'LOGO'
             kkk'         .kk,
             WMMMo        ;MMc
@@ -88,6 +89,44 @@ _nzr_logo() {
 LOGO
 }
 
+# Print logo dengan warna — center tiap baris
+_print_logo() {
+  local TW="$1"
+  local col; col=$(_theme_color)
+
+  if _is_lolcat; then
+    # Mode lolcat: kumpulkan logo + padding, pipe ke lolcat sekaligus
+    # supaya rainbow mengalir dari atas ke bawah (bukan per-baris)
+    local logo_lines=()
+    while IFS= read -r l; do logo_lines+=("$l"); done < <(_nzr_logo_raw)
+
+    # Hitung max lebar logo untuk centering
+    local max_w=0 vl
+    for l in "${logo_lines[@]}"; do
+      vl=${#l}; (( vl > max_w )) && max_w=$vl
+    done
+
+    # Buat output dengan padding sudah disisipkan, lalu pipe ke lolcat
+    {
+      for l in "${logo_lines[@]}"; do
+        local pad=$(( (TW - ${#l}) / 2 ))
+        (( pad < 0 )) && pad=0
+        printf "%${pad}s%s\n" "" "$l"
+      done
+    } | lolcat -f 2>/dev/null
+
+  else
+    # Mode warna biasa: print per-baris dengan warna ANSI
+    while IFS= read -r l; do
+      local vl=${#l}
+      printf '%s' "$col"
+      _center "$l" "$TW" "$vl"
+      printf '%s' "$R"
+    done < <(_nzr_logo_raw)
+  fi
+}
+
+# ─── NEOFETCH ─────────────────────────────────────────────────────
 _nzr_neo() {
   [[ "$SHOW_SYSTEM_INFO" != "ON" ]] && return
   local os host usr sh_v ram disk upt tim
@@ -112,19 +151,24 @@ _nzr_neo() {
   printf "${CY}${BOLD}Time${R}:   ${WH}%s${R}\n"    "$tim"
 }
 
+# ─── HEADLINE ─────────────────────────────────────────────────────
 _nzr_headline() {
   [[ "$SHOW_HEADLINE" != "ON" ]] && return
   local text="${HEADLINE_TEXT:-NZR-RD}"
-  local col; col=$(_hl_color)
+  local col; col=$(_theme_color)
+
   if ! command -v figlet &>/dev/null; then
     printf '%s%s%s\n' "$col" "$text" "$R"; return
   fi
+
   local font="banner"
   for f in big block banner3 banner; do
     figlet -f "$f" "X" &>/dev/null 2>&1 && { font="$f"; [[ "$f" == "big" || "$f" == "block" ]] && break; }
   done
+
   local fw="${_NZR_HL_W:-60}"
-  if [[ "$HEADLINE_COLOR" == "lolcat" ]] && command -v lolcat &>/dev/null; then
+
+  if _is_lolcat; then
     figlet -f "$font" -w "$fw" "$text" 2>/dev/null | lolcat -f 2>/dev/null
   else
     while IFS= read -r line; do
@@ -133,84 +177,71 @@ _nzr_headline() {
   fi
 }
 
+# ─── WELCOME BOX ──────────────────────────────────────────────────
 _nzr_welcome() {
   [[ "$SHOW_USER_INFO" != "ON" ]] && return
   local name="${USER_NAME:-${USER:-user}}"
   local msg="${WELCOME_MSG:-Selamat datang, }"
-  local cols=("$CY" "$BL" "$MG" "$YL" "$GR")
-  local c="${cols[$((RANDOM % 5))]}"
-  local inner="${msg}${name}"
-  local ilen; ilen=$(( ${#msg} + ${#name} ))
+  local col; col=$(_theme_color)
+
+  # Jika lolcat, pakai warna random dari palet ANSI sebagai fallback welcome
+  if _is_lolcat; then
+    local rcols=("$CY" "$MG" "$YL" "$GR" "$BL")
+    col="${rcols[$((RANDOM % 5))]}"
+  fi
+
+  local ilen=$(( ${#msg} + ${#name} ))
   local hline; hline=$(_rep "─" $(( ilen + 2 )))
-  printf "${c}╭%s╮${R}\n" "$hline"
-  printf "${c}│ %s${WH}${BOLD}%s${R}${c} │${R}\n" "$msg" "$name"
-  printf "${c}╰%s╯${R}\n" "$hline"
+  printf "${col}╭%s╮${R}\n" "$hline"
+  printf "${col}│ %s${WH}${BOLD}%s${R}${col} │${R}\n" "$msg" "$name"
+  printf "${col}╰%s╯${R}\n" "$hline"
 }
 
+# ─── MAIN DISPLAY ─────────────────────────────────────────────────
 _nzr_display() {
   local TW; TW=$(_tw)
 
   # ══ 1. CLEAR ══════════════════════════════════════════════
   clear
 
-  # ══ 2. LOGO (tengah, hijau) ═══════════════════════════════
+  # ══ 2. LOGO (warna dari HEADLINE_COLOR) ═══════════════════
   if [[ "$SHOW_LOGO" == "ON" ]]; then
-    local logo_lines=()
-    while IFS= read -r l; do logo_lines+=("$l"); done < <(_nzr_logo)
-    printf '%s' "$GR"
-    for l in "${logo_lines[@]}"; do
-      # Logo adalah plain ASCII — panjang visual = panjang string biasa
-      local vl=${#l}
-      _center "$l" "$TW" "$vl"
-    done
-    printf '%s\n' "$R"
+    _print_logo "$TW"
+    printf '\n'
   fi
 
-  # ══ 3. WELCOME (tengah, di bawah logo) ════════════════════
+  # ══ 3. WELCOME (tengah) ═══════════════════════════════════
   if [[ "$SHOW_USER_INFO" == "ON" ]]; then
-    local wel_lines=()
-    while IFS= read -r l; do wel_lines+=("$l"); done < <(_nzr_welcome)
     local name="${USER_NAME:-${USER:-user}}"
     local msg="${WELCOME_MSG:-Selamat datang, }"
-    # Lebar box welcome = panjang teks + 4 (│ spasi ... spasi │)
     local wel_w=$(( ${#msg} + ${#name} + 4 ))
-    for l in "${wel_lines[@]}"; do
-      _center "$l" "$TW" "$wel_w"
-    done
+    local wel_lines=()
+    while IFS= read -r l; do wel_lines+=("$l"); done < <(_nzr_welcome)
+    for l in "${wel_lines[@]}"; do _center "$l" "$TW" "$wel_w"; done
     printf '\n'
   fi
 
   # ══ 4. KOTAK headline (kiri) + neofetch (kanan) ═══════════
-
-  # Kumpulkan neofetch → hitung lebar kolom kanan
   local neo_lines=() v
   while IFS= read -r l; do neo_lines+=("$l"); done < <(_nzr_neo)
 
   local NEO_W=0
-  for l in "${neo_lines[@]}"; do
-    v=$(_vl "$l"); (( v > NEO_W )) && NEO_W=$v
-  done
+  for l in "${neo_lines[@]}"; do v=$(_vl "$l"); (( v > NEO_W )) && NEO_W=$v; done
   local NC=$(( NEO_W + 2 ))
 
-  # Estimasi kolom kiri → set figlet width supaya pas
   local HC_est=$(( TW - NC - 6 ))
   (( HC_est < 10 )) && HC_est=10
   export _NZR_HL_W=$(( HC_est - 2 ))
 
-  # Generate headline
   local hl_lines=()
   if [[ "$SHOW_HEADLINE" == "ON" ]]; then
     while IFS= read -r l; do hl_lines+=("$l"); done < <(_nzr_headline)
   fi
 
-  # Hitung HC dari konten aktual headline
   local HL_W=0
-  for l in "${hl_lines[@]}"; do
-    v=$(_vl "$l"); (( v > HL_W )) && HL_W=$v
-  done
+  for l in "${hl_lines[@]}"; do v=$(_vl "$l"); (( v > HL_W )) && HL_W=$v; done
   local HC=$(( HL_W + 2 )); (( HC < 6 )) && HC=6
 
-  # Proporsikan jika terlalu lebar
   local BOX=$(( HC + NC + 6 ))
   if (( BOX > TW )); then
     local avail=$(( TW - 6 ))
@@ -219,20 +250,17 @@ _nzr_display() {
     BOX=$(( HC + NC + 6 ))
   fi
 
-  # ── KUNCI FIX CENTER: hitung panjang border SECARA EKSPLISIT ──
-  # Box-drawing chars (║ ═ ╔ dll) = 1 karakter terminal di Termux
-  # Panjang border = HC+2 + NC+2 + 3 chars (╔ ╦ ╗)
   local border_w=$(( HC + NC + 6 ))
+  local col; col=$(_theme_color)
+  # Border kotak juga ikut warna tema (kecuali lolcat — pakai cyan default)
+  local box_col="$col"
+  _is_lolcat && box_col="$CY"
 
   _hborder() {
-    local L="$1" M="$2" Rr="$3"
-    local s="${L}"
-    s+=$(_rep "═" $(( HC + 2 )))
-    s+="$M"
-    s+=$(_rep "═" $(( NC + 2 )))
-    s+="$Rr"
-    # Gunakan border_w sebagai lebar visual yang sudah diketahui
-    _center "$s" "$TW" "$border_w"
+    local s="${1}"
+    s+=$(_rep "═" $(( HC + 2 ))); s+="${2}"
+    s+=$(_rep "═" $(( NC + 2 ))); s+="${3}"
+    _center "${box_col}${s}${R}" "$TW" "$border_w"
   }
 
   _row() {
@@ -241,10 +269,9 @@ _nzr_display() {
     lv=$(_vl "$lraw"); rv=$(_vl "$rcol")
     lpad=$(( HC - lv - 1 )); rpad=$(( NC - rv - 1 ))
     (( lpad < 0 )) && lpad=0; (( rpad < 0 )) && rpad=0
-    lcol=""; [[ -n "$lraw" ]] && lcol="${CY}${lraw}${R}"
+    [[ -n "$lraw" ]] && lcol="${col}${lraw}${R}" || lcol=""
     lsp=$(_rep " " "$lpad"); rsp=$(_rep " " "$rpad")
-    local row="║ ${lcol}${lsp} ║ ${rcol}${rsp} ║"
-    # Lebar visual row = border_w (sama dengan border)
+    local row="${box_col}║${R} ${lcol}${lsp} ${box_col}║${R} ${rcol}${rsp} ${box_col}║${R}"
     _center "$row" "$TW" "$border_w"
   }
 
