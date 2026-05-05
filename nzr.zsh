@@ -12,7 +12,8 @@ _nzr_resolve_dir() {
   [[ -n "${ZSH_SCRIPT:-}" ]] && { echo "${ZSH_SCRIPT:A:h}"; return; }
   local d="${0:A:h}"
   [[ -d "$d" && "$d" != "$HOME" ]] && { echo "$d"; return; }
-  for c in "$HOME/terminal-nzr-theme" "$HOME/nzr-theme" "$HOME/.config/nzr-theme" "$HOME/.nzr-theme"; do
+  for c in "$HOME/terminal-nzr-theme" "$HOME/nzr-theme" \
+            "$HOME/.config/nzr-theme" "$HOME/.nzr-theme"; do
     [[ -f "$c/config.sh" ]] && { echo "$c"; return; }
   done
   echo "$HOME/terminal-nzr-theme"
@@ -68,11 +69,7 @@ setopt HIST_IGNORE_DUPS
 setopt SHARE_HISTORY
 
 # ─── POWERLINE SEPARATOR ──────────────────────────────────────────
-if [[ "${TERM:-}" != "dumb" ]]; then
-  SEP=$'\ue0b0'
-else
-  SEP=">"
-fi
+[[ "${TERM:-}" != "dumb" ]] && SEP=$'\ue0b0' || SEP=">"
 
 # ─── STATUS BAR ───────────────────────────────────────────────────
 _nzr_status() {
@@ -111,8 +108,7 @@ _nzr_dir_git() {
 
 # ─── ERROR ────────────────────────────────────────────────────────
 _nzr_error() {
-  local code=$?
-  [[ $code -eq 0 ]] && return
+  local code=$?; [[ $code -eq 0 ]] && return
   local icon
   case $code in
     127) icon="? cmd"   ;; 126) icon="✘ perm" ;;
@@ -130,21 +126,61 @@ $(_nzr_dir_git)
 
 RPROMPT='$(_nzr_error)'
 
+# ─── FUNGSI DISPLAY ───────────────────────────────────────────────
+# Dipanggil kapanpun kita mau refresh tampilan
+_nzr_show() {
+  [[ "${TERM:-}" == "dumb" ]] && return
+  zsh "$NZR_DIR/display.sh" 2>/dev/null
+}
+
 # ─── ALIASES ──────────────────────────────────────────────────────
-# r = reset terminal sepenuhnya (re-exec zsh, bukan sekedar reload)
-alias r='clear && exec zsh'
-# rr = reload .zshrc tanpa restart (untuk debug config)
+
+# r = refresh display + reload config tanpa kehilangan history
+# Menggunakan source (bukan exec zsh) agar history autosuggestions tetap ada
+alias r='_nzr_show && source ~/.zshrc'
+
+# rr = reload .zshrc saja tanpa display (untuk debug cepat)
 alias rr='source ~/.zshrc'
+
+# rd = tampilkan display saja tanpa reload apapun
+alias rd='_nzr_show'
+
+# ─── HOOK: source ~/.zshrc → otomatis tampilkan display ───────────
+# Kita override perilaku source dengan preexec + precmd hook
+# Cara: deteksi jika perintah yang dijalankan adalah "source ~/.zshrc"
+# lalu set flag, kemudian precmd akan trigger display
+
+_nzr_preexec() {
+  local cmd="$1"
+  # Deteksi source ~/.zshrc atau `. ~/.zshrc`
+  if [[ "$cmd" == "source ~/.zshrc" || \
+        "$cmd" == "source $HOME/.zshrc" || \
+        "$cmd" == ". ~/.zshrc" || \
+        "$cmd" == ". $HOME/.zshrc" ]]; then
+    _NZR_SHOW_AFTER_SOURCE=1
+  fi
+}
+
+_nzr_precmd() {
+  if [[ -n "$_NZR_SHOW_AFTER_SOURCE" ]]; then
+    unset _NZR_SHOW_AFTER_SOURCE
+    _nzr_show
+  fi
+}
+
+# Daftarkan hooks (tidak duplikat jika sudah ada)
+autoload -Uz add-zsh-hook
+add-zsh-hook preexec _nzr_preexec
+add-zsh-hook precmd  _nzr_precmd
 
 # ─── STARTUP DISPLAY ──────────────────────────────────────────────
 _nzr_startup() {
   [[ ! -o interactive ]] && return
   [[ "${TERM:-}" == "dumb" ]] && return
-
-  if [[ "$SHOW_LOGO" == "ON" || "$SHOW_HEADLINE" == "ON" || "$SHOW_USER_INFO" == "ON" ]]; then
-    # clear sudah ada di dalam display.sh, tidak perlu double clear di sini
-    zsh "$NZR_DIR/display.sh" 2>/dev/null
-  fi
+  # Flag untuk cegah double display saat source pertama kali
+  [[ -n "$_NZR_STARTUP_DONE" ]] && return
+  _NZR_STARTUP_DONE=1
+  _nzr_show
 }
 
 _nzr_startup
