@@ -257,7 +257,7 @@ fi
 cat >> "$ZSHRC" <<EOF
 
 # NZR Theme — https://github.com/nzr-rd/terminal-nzr-theme
-source "$THEME_DIR/main.sh"
+source "$THEME_DIR/nzr.zsh"
 EOF
 
 ok "Theme diaktifkan di $ZSHRC"
