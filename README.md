@@ -6,7 +6,6 @@ Tema terminal Zsh yang dirancang untuk kecepatan, keindahan, dan kemudahan kusto
 
 ## 📸 Preview
 ![Terminal Preview](Screenshot_20260506-140003.jpg)
-*(Foto terminal akan muncul di sini setelah kamu mengupload file `screenshot.jpg` ke repository)*
 
 ---
 
@@ -25,20 +24,34 @@ Tema terminal Zsh yang dirancang untuk kecepatan, keindahan, dan kemudahan kusto
 
 Pastikan kamu sudah menginstall `git` sebelum memulai. Jalankan perintah berikut langkah demi langkah:
 
-1. **Clone Repository**
-   ```bash
-   git clone [https://github.com/nanang55550-star/terminal-nzr-theme.git](https://github.com/nanang55550-star/terminal-nzr-theme.git)
-'''
+# 1. Clone Repository
+```bash
+git clone [https://github.com/nanang55550-star/terminal-nzr-theme.git](https://github.com/nanang55550-star/terminal-nzr-theme.git)
+```
 
-2. Masuk ke Direktori
+# 2. Masuk ke Direktori
 ```bash
 cd terminal-nzr-theme
 ```
 
-3. Berikan Izin Eksekusi
+# 3. Berikan Izin Eksekusi
 ```bash
 chmod +x install.sh
 ```
+# 4. Jalankan Installer
+```bash
+./install.sh
+```
+# 5. Muat Ulang Terminal
+```bash
+exec zsh
+```
 
+## ⚙️ Kustomisasi
+Kamu bisa mengubah tampilan (Headline text, warna, atau mematikan fitur tertentu) kapan saja dengan mengedit file konfigurasi:
+```bash
+nano config.sh
+```
 
-
+## 📄 Lisensi
+Proyek ini dilindungi di bawah MIT License. Bebas digunakan dan dikembangkan kembali.
