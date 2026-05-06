@@ -26,7 +26,7 @@ Pastikan kamu sudah menginstall `git` sebelum memulai. Jalankan perintah berikut
 
 # 1. Clone Repository
 ```bash
-git clone [https://github.com/nanang55550-star/terminal-nzr-theme.git](https://github.com/nanang55550-star/terminal-nzr-theme.git)
+git clone https://github.com/nanang55550-star/terminal-nzr-theme.git
 ```
 
 # 2. Masuk ke Direktori
