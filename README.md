@@ -5,7 +5,7 @@ Tema terminal Zsh yang dirancang untuk kecepatan, keindahan, dan kemudahan kusto
 ---
 
 ## 📸 Preview
-![Terminal Preview](screenshot.jpg)
+![Terminal Preview](Screenshot_20260506-140003.jpg)
 *(Foto terminal akan muncul di sini setelah kamu mengupload file `screenshot.jpg` ke repository)*
 
 ---
