@@ -1,1 +1,44 @@
-# termux-nzr-theme
+# 🚀 terminal-nzr-theme
+
+Tema terminal Zsh yang dirancang untuk kecepatan, keindahan, dan kemudahan kustomisasi. Cocok digunakan di **Termux (Android)** maupun berbagai distro **Linux**.
+
+---
+
+## 📸 Preview
+![Terminal Preview](screenshot.jpg)
+*(Foto terminal akan muncul di sini setelah kamu mengupload file `screenshot.jpg` ke repository)*
+
+---
+
+## ✨ Fitur Unggulan
+- **Powerline Support:** Tampilan baris perintah yang modern dengan simbol informatif.
+- **Universal Installer:** Deteksi otomatis OS (Termux, Debian, Arch, macOS) dan package manager.
+- **Interactive Setup:** Personalisasi nama user dan pesan selamat datang saat instalasi.
+- **Modular Config:** Pengaturan warna dan fitur cukup melalui file `config.sh`.
+- **Auto-Suggestions:** Prediksi perintah berdasarkan riwayat pengetikan.
+- **Syntax Highlighting:** Pewarnaan perintah untuk meminimalisir kesalahan ketik.
+- **Fancy Headline:** Integrasi Figlet dan Lolcat untuk tampilan ASCII art yang berwarna.
+
+---
+
+## 📥 Cara Instalasi
+
+Pastikan kamu sudah menginstall `git` sebelum memulai. Jalankan perintah berikut langkah demi langkah:
+
+1. **Clone Repository**
+   ```bash
+   git clone [https://github.com/nanang55550-star/terminal-nzr-theme.git](https://github.com/nanang55550-star/terminal-nzr-theme.git)
+'''
+
+2. Masuk ke Direktori
+```bash
+cd terminal-nzr-theme
+```
+
+3. Berikan Izin Eksekusi
+```bash
+chmod +x install.sh
+```
+
+
+
