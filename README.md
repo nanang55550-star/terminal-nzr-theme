@@ -45,7 +45,7 @@ bash install.sh
 💡 Note for Linux Users:
 Jika kamu menggunakan Ubuntu/Debian/Arch, jalankan installer dengan akses root:
 ```bash
-sudo ./install.sh
+sudo bash install.sh
 ```
 
 
