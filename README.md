@@ -40,7 +40,7 @@ chmod +x install.sh
 ```
 # 4. Jalankan Installer
 ```bash
-./install.sh
+bash install.sh
 ```
 💡 Note for Linux Users:
 Jika kamu menggunakan Ubuntu/Debian/Arch, jalankan installer dengan akses root:
