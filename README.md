@@ -42,6 +42,13 @@ chmod +x install.sh
 ```bash
 ./install.sh
 ```
+💡 Note for Linux Users:
+Jika kamu menggunakan Ubuntu/Debian/Arch, jalankan installer dengan akses root:
+```bash
+sudo ./install.sh
+```
+
+
 # 5. Muat Ulang Terminal
 ```bash
 exec zsh
