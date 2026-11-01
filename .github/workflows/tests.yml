@@ -1,0 +1,35 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: zsh tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pasang zsh + git (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y zsh git
+
+      - name: Versi
+        run: zsh --version && git --version
+
+      - name: Test suite
+        run: zsh tests/run.zsh
+
+      - name: display.sh dan install.sh bisa di-parse bash
+        run: |
+          bash -n display.sh
+          bash -n install.sh
+
+      - name: display.sh jalan lewat bash (otomatis pindah ke zsh)
+        run: |
+          COLUMNS=80 bash display.sh > /dev/null
