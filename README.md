@@ -44,10 +44,14 @@ Prompt 4 baris: baris error di atas, lalu tiga baris klasik.
 ## 📥 Instalasi
 
 ```bash
-git clone https://github.com/nzr-rd/terminal-nzr-theme.git
+git clone https://github.com/nanang55550-star/terminal-nzr-theme.git
+
 cd terminal-nzr-theme
+
 bash install.sh
+
 exec zsh
+
 ```
 
 
