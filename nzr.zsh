@@ -7,6 +7,31 @@
 [[ -n "$_NZR_LOADED" ]] && return
 _NZR_LOADED=1
 
+# ─── KELUAR / MASUK THEME  (nzr exit  ·  nzr) ─────────────────────
+# Cara kerja: shell diganti dengan zsh baru (exec). NZR_OFF=1 membuat zsh baru itu
+# MELEWATI theme sepenuhnya, jadi hasilnya benar-benar bersih: prompt bawaan, tanpa
+# hook, plugin, opsi, atau warna dari theme. Riwayat sesi disimpan dulu dan folder
+# kerja tetap sama. Terminal baru (tab baru) tetap memuat theme seperti biasa.
+_nzr_reexec() {   # $1 = off (lewati theme) | on (muat theme)
+  if [[ "$1" == off ]]; then export NZR_OFF=1; else unset NZR_OFF; fi
+  (( ${#jobstates} )) && print -P "%F{yellow}⚠%f ${#jobstates} job latar belakang tetap berjalan, tapi tidak lagi terdaftar di shell baru" >&2
+  [[ -n "${HISTFILE:-}" ]] && fc -W 2>/dev/null          # simpan riwayat sesi ini
+  exec "${commands[zsh]:-zsh}"
+}
+
+# Saat NZR_OFF aktif: hanya sediakan perintah `nzr` untuk memuat theme lagi.
+if [[ -n "${NZR_OFF:-}" ]]; then
+  nzr() {
+    if (( $# == 0 )); then
+      print -P "%F{cyan}NZR:%f memuat theme..."
+      _nzr_reexec on
+    fi
+    print -P "NZR sedang nonaktif (prompt bawaan). Ketik %Bnzr%b untuk memuat theme." >&2
+    return 1
+  }
+  return 0
+fi
+
 # ─── PATH AUTO-DETECT ─────────────────────────────────────────────
 _nzr_resolve_dir() {
   # 1. NZR_DIR yang sudah di-set user di .zshrc
@@ -78,7 +103,7 @@ fi
 : "${NZR_COLOR_DEPTH:=auto}"       # auto | truecolor | 256
 : "${STATS_LOG:=ON}"               # catat NAMA perintah (tanpa argumen) untuk nzr stats
 
-NZR_VERSION="3.0.0"
+NZR_VERSION="3.1.0"
 
 # ─── AUTOSUGGESTIONS LOG SYSTEM ───────────────────────────────────
 # File log terpisah dari $HISTFILE — khusus untuk feed autosuggestions
@@ -93,7 +118,12 @@ NZR_VERSION="3.0.0"
 #   3. Jika jumlah baris melebihi batas, baris PALING LAMA dihapus (FIFO)
 #   4. Duplikat dalam 1 sesi tidak dicatat ulang
 
-NZR_SUGGEST_LOG="${NZR_DIR}/zsh_autosuggestions.log"
+# privacy.sh dimuat lebih awal: menyediakan penyaring rahasia + migrasi log
+[[ -f "$NZR_DIR/lib/privacy.sh" ]] && source "$NZR_DIR/lib/privacy.sh"
+
+# Data pribadi (log saran, statistik) disimpan di luar folder repo, di folder privat
+NZR_DATA_HOME="${NZR_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/nzr}"
+NZR_SUGGEST_LOG="${NZR_DATA_HOME}/autosuggestions.log"
 
 # Deteksi device untuk tentukan batas
 _nzr_detect_log_limit() {
@@ -116,6 +146,10 @@ NZR_LOG_LIMIT=$(_nzr_detect_log_limit)
 export NZR_SUGGEST_LOG NZR_LOG_LIMIT
 
 # Inisialisasi file log (privat: hanya pemilik yang boleh baca)
+[[ -d "$NZR_DATA_HOME" ]] || ( umask 077; mkdir -p "$NZR_DATA_HOME" ) 2>/dev/null
+chmod 700 "$NZR_DATA_HOME" 2>/dev/null
+# versi lama menyimpan log di dalam folder repo → pindahkan sekali
+_nzr_migrate_log "$NZR_DIR/zsh_autosuggestions.log" "$NZR_SUGGEST_LOG"
 [[ -f "$NZR_SUGGEST_LOG" ]] || ( umask 077; touch "$NZR_SUGGEST_LOG" )
 chmod 600 "$NZR_SUGGEST_LOG" 2>/dev/null
 
@@ -239,7 +273,7 @@ fi
 # notify    : notifikasi perintah lama
 # cli       : perintah `nzr`
 # tools     : mkcd, up, bak, extract (opsional)
-for _m in privacy theme prompt errorline notify insights cli; do
+for _m in theme prompt errorline notify insights cli; do
   [[ -f "$NZR_DIR/lib/$_m.sh" ]] && source "$NZR_DIR/lib/$_m.sh"
 done
 [[ "$EXTRA_TOOLS" == "ON" && -f "$NZR_DIR/lib/tools.sh" ]] && source "$NZR_DIR/lib/tools.sh"
