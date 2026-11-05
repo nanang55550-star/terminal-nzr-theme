@@ -346,7 +346,45 @@ else bad "uninstall: pembersihan blok"; fi
 ls "$TMP/uh/.bashrc.nzr-backup" "$TMP/uh/.profile.nzr-backup" "$TMP/uh/.zshrc.nzr-backup" >/dev/null 2>&1 && ok "uninstall: cadangan dibuat" || bad "uninstall: cadangan dibuat"
 
 # ═════════════════════════════════════════════════════════════════
-section "19. Portabilitas dan sintaks"
+section "20. Installer: input aman, install_pkg, stdin tertutup"
+for fn in ask sanitize_text _sed_inplace _set_config install_pkg; do sed -n "/^${fn}()/,/^}/p" "$ROOT/install.sh"; done > "$TMP/inst_fns.sh"
+PRE='ok(){ :; }; info(){ :; }; warn(){ echo "WARN $*"; }; . "$1"'
+# sanitize_text
+out=$(bash -c "$PRE; sanitize_text 'x\"\$(touch /tmp/nzr_pwn)\"y;\`id\`|a\\\\b' 40" _ "$TMP/inst_fns.sh")
+[[ "$out" != *['"$`\;|()']* ]] && ok "sanitize: kutip, \$, backtick, ;, |, \\, () dibuang" || bad "sanitize: karakter berbahaya dibuang" "$out"
+out=$(bash -c "$PRE; sanitize_text 'Budi, Dr. A_b-c! ok?' 40" _ "$TMP/inst_fns.sh"); eq "sanitize: karakter aman dipertahankan" "Budi, Dr. A_b-c! ok?" "$out"
+out=$(bash -c "$PRE; sanitize_text '$(printf 'a%.0s' {1..50})' 10" _ "$TMP/inst_fns.sh"); eq "sanitize: dipotong sesuai batas" 10 "${#out}"
+# _set_config
+cat > "$TMP/cfg_inst.sh" <<'CFG'
+#!/bin/zsh
+USER_NAME="D"          # Nama di welcome box
+SHOW_LOGO=ON
+CFG
+cp "$TMP/cfg_inst.sh" "$TMP/cfg_before.sh"
+bash -c "$PRE; CONFIG_FILE='$TMP/cfg_inst.sh'; _set_config USER_NAME 'x\"\$(touch $TMP/PWNED)\"y'" _ "$TMP/inst_fns.sh" >/dev/null 2>&1; rc=$?
+(( rc != 0 )) && ok "_set_config menolak nilai tidak aman (kode ≠ 0)" || bad "_set_config menolak nilai tidak aman"
+cmp -s "$TMP/cfg_inst.sh" "$TMP/cfg_before.sh" && ok "config.sh tidak berubah saat nilai ditolak" || bad "config.sh tidak berubah saat nilai ditolak"
+bash -c "$PRE; CONFIG_FILE='$TMP/cfg_inst.sh'; _set_config USER_NAME 'a|b'" _ "$TMP/inst_fns.sh" >/dev/null 2>&1
+cmp -s "$TMP/cfg_inst.sh" "$TMP/cfg_before.sh" && ok "karakter '|' (delimiter sed) ditolak, bukan merusak sed" || bad "karakter '|' ditolak"
+bash -c "$PRE; CONFIG_FILE='$TMP/cfg_inst.sh'; _set_config USER_NAME 'Budi'" _ "$TMP/inst_fns.sh" >/dev/null 2>&1
+grep -q '^USER_NAME="Budi" *# Nama di welcome box$' "$TMP/cfg_inst.sh" && ok "_set_config: nilai diganti, komentar dipertahankan" || bad "_set_config: komentar dipertahankan" "$(grep ^USER_NAME "$TMP/cfg_inst.sh")"
+bash -c "$PRE; CONFIG_FILE='$TMP/cfg_inst.sh'; _set_config SHOW_LOGO OFF" _ "$TMP/inst_fns.sh" >/dev/null 2>&1
+grep -q '^SHOW_LOGO="OFF"' "$TMP/cfg_inst.sh" && ok "_set_config: baris tanpa kutip (config lama) ikut diganti" || bad "_set_config: baris tanpa kutip"
+bash -c "$PRE; CONFIG_FILE='$TMP/cfg_inst.sh'; _set_config OPSI_BARU ON" _ "$TMP/inst_fns.sh" >/dev/null 2>&1
+grep -q '^OPSI_BARU="ON"$' "$TMP/cfg_inst.sh" && ok "_set_config: KEY yang belum ada ditambahkan" || bad "_set_config: KEY baru ditambahkan"
+zsh -fc "source '$TMP/cfg_inst.sh'" >/dev/null 2>&1; [[ ! -e "$TMP/PWNED" ]] && ok "config.sh di-source: tidak ada perintah yang terjalankan" || bad "PERINTAH TERJALANKAN dari config.sh"
+# install_pkg: kegagalan tidak boleh mematikan skrip di bawah set -e
+mkdir -p "$TMP/bin2"; printf '#!/bin/sh\nexit 100\n' > "$TMP/bin2/apt-get"; chmod +x "$TMP/bin2/apt-get"
+out=$(PATH="$TMP/bin2:$PATH" bash -c "set -euo pipefail; $PRE; PKG_MGR=apt; SUDO=''; install_pkg paketfiktif paketfiktif paketfiktif paketfiktif paketfiktif || echo GAGAL-DITANGANI; echo LANJUT" _ "$TMP/inst_fns.sh" 2>&1)
+[[ "$out" == *"WARN paketfiktif gagal diinstall"* && "$out" == *"GAGAL-DITANGANI"* && "$out" == *"LANJUT"* ]] \
+  && ok "install_pkg gagal: peringatan tampil dan skrip tetap lanjut (set -e)" || bad "install_pkg gagal: skrip tetap lanjut" "$out"
+# stdin tertutup
+out=$(bash -c "set -euo pipefail; . '$TMP/inst_fns.sh'; ask 'x: ' V </dev/null; echo \"LANJUT V=[\$V]\"" 2>&1)
+[[ "$out" == *"LANJUT V=[]"* ]] && ok "ask: stdin tertutup → nilai default, tidak keluar diam-diam" || bad "ask: stdin tertutup" "$out"
+grep -q "read -r -p" "$ROOT/install.sh" && [[ "$(grep -c 'read -r -p' "$ROOT/install.sh")" == 1 ]] && ok "hanya satu 'read -r -p' (di dalam ask)" || bad "semua input lewat ask"
+
+# ═════════════════════════════════════════════════════════════════
+section "21. Portabilitas dan sintaks"
 for f in "$ROOT/nzr.zsh" "$ROOT"/lib/*.sh "$ROOT/config.sh" "$ROOT/display.sh" "$ROOT/tests/run.zsh"; do
   zsh -n "$f" 2>/dev/null && ok "zsh -n ${f#$ROOT/}" || bad "zsh -n ${f#$ROOT/}"
 done
