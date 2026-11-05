@@ -60,6 +60,7 @@ Installer akan menanyakan apakah zsh dijadikan shell otomatis, supaya theme term
 | **sh / ash / dash** | menambah dua baris ke `~/.profile` |
 | **zsh sudah default** (mis. macOS) | tidak mengubah apa pun |
 
+Lepas theme: `bash install.sh --uninstall` (hanya baris milik theme yang dihapus dari `.zshrc`, `.bashrc`, dan `.profile`, dengan cadangan; shell default tidak dikembalikan otomatis).
 
 ### Font
 Simbol powerline butuh **Nerd Font / Powerline font**. Jalankan `nzr font` untuk mengetesnya dan melihat cara memasang di OS-mu. Termux umumnya sudah menampilkannya dengan benar.
@@ -155,6 +156,7 @@ fix                    perbaiki perintah terakhir yang gagal
 - Log autosuggestions dan `HISTFILE` menyaring perintah berisi token, password, `Bearer`, API key (`ghp_`, `sk-`, `AKIA…`), dan URL `user:pass@`. Perintah itu masih bisa dipanggil lagi dengan panah atas selama sesi berjalan.
 - Teks perintah yang gagal dan judul terminal dibersihkan dari escape sequence (tidak ada eksekusi `$(...)` atau injeksi kontrol terminal).
 - Installer tidak menimpa baris `.zshrc` milikmu; hanya dua baris theme.
+- Teks yang kamu ketik di installer (nama, headline, pesan) disaring sebelum ditulis ke `config.sh`: hanya huruf, angka, spasi, dan `, . _ ! ? : @ + -`. Ini penting karena `config.sh` di-source oleh shell.
 
 ---
 
@@ -185,7 +187,7 @@ Semua opsi ada di `config.sh`, dan semuanya bisa diubah dengan `nzr set`. Lihat 
 zsh tests/run.zsh
 ```
 
-Tanpa dependensi selain zsh, git, dan awk. Yang dijaga:
+Kebutuhan: **zsh, git, bash**, dan utilitas standar POSIX/coreutils (`awk`, `sed`, `sort`, `stat`, `mktemp`, `grep`, …). `figlet` opsional: tes headline dilewati bila tidak ada. Yang dijaga:
 
 - tiga baris prompt **identik byte-per-byte** dengan v2.0
 - arti kode exit, format durasi, saran typo, perilaku layar sempit
@@ -194,6 +196,7 @@ Tanpa dependensi selain zsh, git, dan awk. Yang dijaga:
 - konversi truecolor → 256 warna, parser `vm_stat` macOS
 - mesin async (worker, cache, git worktree), `fix`, `nzr stats`, notifikasi
 - uninstall hanya menghapus baris milik theme
+- installer: input teks disaring (tidak ada eksekusi `$(...)` lewat `config.sh`), kegagalan pemasangan paket tidak mematikan skrip, stdin tertutup memakai nilai default
 
 CI (GitHub Actions) menjalankan tes yang sama di Ubuntu dan macOS pada setiap push.
 
@@ -218,6 +221,12 @@ tests/             test suite + fixture golden
 ```
 
 ---
+
+## 📝 Catatan perubahan v3.1.1
+
+- **Keamanan installer** nilai dari input pengguna sebelumnya hanya di-escape sebagian (`/` dan `&`), sehingga `$(...)`, kutip, atau backtick bisa merusak `config.sh` atau terjalankan saat di-source. Sekarang input disaring dan `_set_config` menolak nilai tidak aman.
+- **Ketahanan installer:** kegagalan `apt`/`brew`/dll. tidak lagi mematikan installer diam-diam sebelum pesan penanganan (`zsh`/`git` wajib dan memberi pesan jelas; `figlet` opsional); stdin tertutup (`curl | bash`) memakai nilai default.
+- **Dokumentasi:** daftar kebutuhan tes di README dibuat akurat.
 
 ## 📝 Catatan perubahan v3.1
 
