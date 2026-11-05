@@ -204,10 +204,17 @@ _nzr_headline() {
 
   local fw="${_NZR_HL_W:-60}"
 
-  # Jalankan figlet sekali; kalau hasilnya kosong (font hilang / lebar terlalu
-  # sempit), tampilkan teks biasa — jangan sampai headline lenyap diam-diam.
-  local art; art=$(figlet -f "$font" -w "$fw" "$text" 2>/dev/null)
-  if [[ -z "${art//[[:space:]]/}" ]]; then
+  # Pilih font terbesar yang MUAT di lebar tersedia: font utama → small → mini → teks biasa.
+  # (Dulu figlet dipaksa -w sempit sehingga huruf pecah menumpuk vertikal di layar kecil.)
+  local art="" f maxw
+  for f in "$font" small mini; do
+    art=$(figlet -f "$f" -w 1000 "$text" 2>/dev/null)
+    [[ -z "${art//[[:space:]]/}" ]] && { art=""; continue; }
+    maxw=$(print -r -- "$art" | awk '{ if (length($0) > m) m = length($0) } END { print m + 0 }')
+    (( maxw <= fw )) && break
+    art=""
+  done
+  if [[ -z "$art" ]]; then
     printf '%s%s%s\n' "$col" "$text" "$R"; return
   fi
 
