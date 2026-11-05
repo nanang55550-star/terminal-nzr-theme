@@ -150,7 +150,13 @@ HIST_SCRUB=ON _nzr_zshaddhistory 'ls -la';           eq "zshaddhistory: perintah
 HIST_SCRUB=OFF _nzr_zshaddhistory 'export TOKEN=abc'; eq "zshaddhistory: HIST_SCRUB=OFF → tidak menyaring" 0 "$?"
 
 # nzr set: validasi & anti-injeksi
-cp "$ROOT/config.sh" "$NZR_DIR/config.sh"
+# fixture config milik tes sendiri → hasil tidak bergantung pada isi config.sh siapa pun
+cat > "$NZR_DIR/config.sh" <<'CFG'
+#!/bin/zsh
+SHOW_LOGO="ON"          # Logo ASCII
+WELCOME_MSG="Selamat datang, "   # sapaan
+USER_NAME=""
+CFG
 out=$(_nzr_cli_set SHOW_LOGO maybe 2>&1);                  [[ "$out" == *"ON atau OFF"* ]]  && ok "set: nilai bukan ON/OFF ditolak" || bad "set: nilai bukan ON/OFF ditolak" "$out"
 out=$(_nzr_cli_set RM_RF yes 2>&1);                        [[ "$out" == *"tidak dikenal"* ]] && ok "set: opsi tak dikenal ditolak" || bad "set: opsi tak dikenal ditolak"
 out=$(_nzr_cli_set USER_NAME 'x$(touch /tmp/pwn)' 2>&1);   [[ "$out" == *"hanya boleh"* ]]  && ok "set: \$(...) di teks ditolak" || bad "set: \$(...) di teks ditolak" "$out"
@@ -158,7 +164,13 @@ out=$(_nzr_cli_set USER_NAME 'a";touch /tmp/pwn;"' 2>&1);  [[ "$out" == *"hanya 
 out=$(_nzr_cli_set CMD_DURATION_MIN '1;ls' 2>&1);          [[ "$out" == *"angka"* ]]        && ok "set: angka tidak valid ditolak" || bad "set: angka tidak valid ditolak"
 [[ ! -e /tmp/pwn ]] && ok "tidak ada perintah yang ikut terjalankan" || { bad "FILE /tmp/pwn TERBUAT"; rm -f /tmp/pwn; }
 _nzr_cli_set SHOW_LOGO off >/dev/null; grep -q '^SHOW_LOGO="OFF"' "$NZR_DIR/config.sh" && ok "set: tersimpan ke config.sh" || bad "set: tersimpan ke config.sh"
-grep -q '^SHOW_LOGO="OFF" *#' "$NZR_DIR/config.sh" && ok "set: komentar di belakang nilai dipertahankan" || bad "set: komentar dipertahankan"
+grep -q '^SHOW_LOGO="OFF" *# Logo ASCII$' "$NZR_DIR/config.sh" && ok "set: komentar di belakang nilai dipertahankan" || bad "set: komentar dipertahankan" "$(grep ^SHOW_LOGO "$NZR_DIR/config.sh")"
+_nzr_cli_set USER_NAME Budi >/dev/null
+grep -q '^USER_NAME="Budi"$' "$NZR_DIR/config.sh" && ok "set: baris tanpa komentar (config lama) juga bekerja" || bad "set: baris tanpa komentar" "$(grep ^USER_NAME "$NZR_DIR/config.sh")"
+_nzr_cli_set STATS_LOG off >/dev/null
+grep -q '^STATS_LOG="OFF"$' "$NZR_DIR/config.sh" && ok "set: opsi yang belum ada di config lama ditambahkan" || bad "set: opsi baru ditambahkan"
+[[ "$(grep -c '^#!/bin/zsh' "$NZR_DIR/config.sh")" == 1 ]] && ok "set: baris shebang tidak rusak" || bad "set: baris shebang tidak rusak"
+STATS_LOG=ON
 _nzr_cli_set WELCOME_MSG "Halo bos" >/dev/null; grep -q '^WELCOME_MSG="Halo bos, *"\|^WELCOME_MSG="Halo bos "' "$NZR_DIR/config.sh" && ok "set: WELCOME_MSG diakhiri satu spasi" || bad "set: WELCOME_MSG diakhiri satu spasi" "$(grep ^WELCOME_MSG $NZR_DIR/config.sh)"
 
 # judul terminal tidak boleh meneruskan ESC asli
@@ -271,7 +283,70 @@ _NZR_LAST_CMD="vim x.txt"; _NZR_LAST_DUR=99; _nzr_notify 0; sleep 0.2
 PATH=$OLDPATH; rehash
 
 # ═════════════════════════════════════════════════════════════════
-section "14. Portabilitas dan sintaks"
+section "15. nzr exit  ·  nzr  (NZR_OFF)"
+out=$(NZR_OFF=1 zsh -fc "source '$ROOT/nzr.zsh'; print -r -- \"\${+functions[nzr]}|\${+functions[_nzr_precmd_status]}|\${+functions[_nzr_prompt_render]}|\$_NZR_LOADED\"" 2>&1)
+eq "NZR_OFF=1: hanya perintah nzr yang tersedia (tanpa hook/prompt theme)" "1|0|0|1" "$out"
+out=$(NZR_OFF=1 zsh -fc "source '$ROOT/nzr.zsh'; nzr foo" 2>&1); rc=$?
+[[ "$out" == *"nonaktif"* && $rc -eq 1 ]] && ok "stub: argumen lain → pesan 'nonaktif', kode 1" || bad "stub: argumen lain" "$out (rc=$rc)"
+out=$(NZR_OFF=1 zsh -fc "source '$ROOT/nzr.zsh'; _nzr_reexec() { print \"REEXEC \$1\" }; nzr" 2>&1)
+[[ "$out" == *"REEXEC on"* ]] && ok "stub: 'nzr' tanpa argumen → memuat theme (on)" || bad "stub: 'nzr' tanpa argumen" "$out"
+_nzr_reexec() { REEXEC_ARG="$1" }
+nzr exit >/dev/null 2>&1; eq "nzr exit → _nzr_reexec off" off "${REEXEC_ARG:-}"
+out=$(nzr 2>&1); [[ "$out" == *"nzr exit"* ]] && ok "theme aktif: 'nzr' tanpa argumen menampilkan bantuan (memuat 'nzr exit')" || bad "bantuan memuat nzr exit"
+unfunction _nzr_reexec
+grep -q '^_nzr_reexec()' "$ROOT/nzr.zsh" && ok "_nzr_reexec didefinisikan di nzr.zsh (tersedia sebelum theme dimuat)" || bad "_nzr_reexec di nzr.zsh"
+grep -q 'fc -W' "$ROOT/nzr.zsh" && ok "riwayat sesi disimpan sebelum exec" || bad "riwayat disimpan sebelum exec"
+
+# ═════════════════════════════════════════════════════════════════
+section "16. Log autosuggestions: pindah keluar dari folder repo"
+print -r -- "ls -la" > "$TMP/old.log"; chmod 644 "$TMP/old.log"
+_nzr_migrate_log "$TMP/old.log" "$TMP/new.log"
+[[ -f "$TMP/new.log" && ! -e "$TMP/old.log" ]] && ok "migrasi: file dipindah" || bad "migrasi: file dipindah"
+eq "migrasi: isi tetap" "ls -la" "$(cat "$TMP/new.log")"
+perm=$(stat -c %a "$TMP/new.log" 2>/dev/null || stat -f %Lp "$TMP/new.log"); eq "migrasi: izin jadi 600" 600 "$perm"
+print -r -- "lama" > "$TMP/old2.log"; print -r -- "baru" > "$TMP/new2.log"
+_nzr_migrate_log "$TMP/old2.log" "$TMP/new2.log"
+eq "migrasi: tidak menimpa file baru" "baru" "$(cat "$TMP/new2.log")"
+[[ -f "$TMP/old2.log" ]] && ok "migrasi: file lama dibiarkan bila baru sudah ada" || bad "migrasi: file lama dibiarkan"
+_nzr_migrate_log "$TMP/tidak-ada.log" "$TMP/x.log"; eq "migrasi: tanpa file lama → aman" 0 "$?"
+grep -q 'NZR_SUGGEST_LOG="${NZR_DATA_HOME}/autosuggestions.log"' "$ROOT/nzr.zsh" && ok "lokasi default log di folder data privat" || bad "lokasi default log"
+
+# ═════════════════════════════════════════════════════════════════
+section "17. Headline selalu rapi (tidak tertumpuk vertikal)"
+if command -v figlet >/dev/null 2>&1; then
+  for w in 100 62 50 40 30; do
+    box=$(COLUMNS=$w TERM=xterm zsh "$ROOT/display.sh" 2>/dev/null | sed 's/\x1b\[[0-9;?]*[A-Za-z]//g' | sed -n '/╔/,/╚/p')
+    n=$(print -r -- "$box" | wc -l | tr -d ' ')
+    (( n >= 5 && n <= 13 )) && ok "lebar $w kolom: kotak ${n} baris (tidak menumpuk)" || bad "lebar $w kolom: tinggi kotak $n" "$box"
+  done
+  box=$(COLUMNS=30 TERM=xterm zsh "$ROOT/display.sh" 2>/dev/null | sed 's/\x1b\[[0-9;?]*[A-Za-z]//g')
+  [[ "$box" == *"NZR-RD"* ]] && ok "lebar 30: jatuh ke teks biasa NZR-RD" || bad "lebar 30: teks biasa"
+else
+  print -P "  %F{yellow}•%f figlet tidak terpasang: bagian ini dilewati"
+fi
+
+# ═════════════════════════════════════════════════════════════════
+section "18. Installer: shell otomatis, tanpa chmod, uninstall"
+grep -q 'chmod +x "\$THEME_DIR"' "$ROOT/install.sh" && bad "installer tidak boleh chmod file repo (membuat git ✗N)" || ok "installer tidak lagi chmod file repo"
+# current_login_shell dijalankan terpisah dengan HOME palsu
+sed -n '/^current_login_shell()/,/^}/p' "$ROOT/install.sh" > "$TMP/fn.sh"
+mkdir -p "$TMP/th/.termux"; ln -sf /data/data/com.termux/files/usr/bin/zsh "$TMP/th/.termux/shell"
+eq "Termux: shell dari symlink ~/.termux/shell" zsh "$(OS=termux HOME="$TMP/th" SHELL=/bin/bash bash -c ". '$TMP/fn.sh'; current_login_shell")"
+eq "non-Termux: shell dari \$SHELL" bash "$(OS=linux HOME="$TMP/th" SHELL=/bin/bash bash -c ". '$TMP/fn.sh'; current_login_shell")"
+# uninstall melepas semua blok milik theme, baris lain tetap
+mkdir -p "$TMP/uh"
+printf 'export A=1\n\n# NZR zsh-switch\n[ -t 0 ] && exec zsh\nexport B=2\n' > "$TMP/uh/.bashrc"
+printf 'export P=1\n\n# NZR zsh-switch\n[ -t 0 ] && exec zsh\nexport Q=2\n' > "$TMP/uh/.profile"
+printf 'export Z=1\n\n# NZR Theme — x\nsource "/x/nzr.zsh"\nexport Y=2\n' > "$TMP/uh/.zshrc"
+HOME="$TMP/uh" bash "$ROOT/install.sh" --uninstall >/dev/null 2>&1
+if ! grep -q "NZR" "$TMP/uh/.bashrc" "$TMP/uh/.profile" "$TMP/uh/.zshrc" 2>/dev/null \
+   && grep -q "export B=2" "$TMP/uh/.bashrc" && grep -q "export Q=2" "$TMP/uh/.profile" && grep -q "export Y=2" "$TMP/uh/.zshrc"; then
+  ok "uninstall: .bashrc, .profile, .zshrc dibersihkan, baris milikmu utuh"
+else bad "uninstall: pembersihan blok"; fi
+ls "$TMP/uh/.bashrc.nzr-backup" "$TMP/uh/.profile.nzr-backup" "$TMP/uh/.zshrc.nzr-backup" >/dev/null 2>&1 && ok "uninstall: cadangan dibuat" || bad "uninstall: cadangan dibuat"
+
+# ═════════════════════════════════════════════════════════════════
+section "19. Portabilitas dan sintaks"
 for f in "$ROOT/nzr.zsh" "$ROOT"/lib/*.sh "$ROOT/config.sh" "$ROOT/display.sh" "$ROOT/tests/run.zsh"; do
   zsh -n "$f" 2>/dev/null && ok "zsh -n ${f#$ROOT/}" || bad "zsh -n ${f#$ROOT/}"
 done
