@@ -20,3 +20,13 @@ _nzr_zshaddhistory() {
   [[ "${(L)1}" =~ $_NZR_HIST_RE ]] && return 2
   return 0
 }
+
+# Pindahkan log lama (di dalam folder repo) ke lokasi baru yang privat.
+# Hanya jika file lama ada DAN file baru belum ada; tidak pernah menimpa.
+_nzr_migrate_log() {   # <lama> <baru>
+  local old="$1" new="$2"
+  [[ -f "$old" && ! -e "$new" ]] || return 0
+  ( umask 077; mv "$old" "$new" ) 2>/dev/null || return 0
+  chmod 600 "$new" 2>/dev/null
+  return 0
+}
