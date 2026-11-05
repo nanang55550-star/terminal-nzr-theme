@@ -2,7 +2,7 @@
 
 Tema prompt **Zsh** yang cepat, cantik, dan pintar. Dibuat untuk **Termux (Android)**, dan berjalan juga di **Linux** dan **macOS**.
 
-> **v3.0:** prompt muncul **instan** (git/RAM/DISK dihitung di latar belakang), **6 tema warna** truecolor, baris **error cerdas** dengan saran perbaikan, perintah **`fix`**, **insight** kebiasaan terminal, dan **tes otomatis**.
+> **v3.1:** prompt muncul **instan** (git/RAM/DISK dihitung di latar belakang), **6 tema warna** truecolor, baris **error cerdas** dengan saran perbaikan, perintah **`fix`**, **insight** kebiasaan terminal, dan **tes otomatis**.
 
 ---
 
@@ -37,6 +37,7 @@ Prompt 4 baris: baris error di atas, lalu tiga baris klasik.
 | 🔔 **Notifikasi** | Build/download panjang selesai → notifikasi (Termux, Linux, macOS). |
 | 🔒 **Privasi** | Token/password disaring dari log dan `HISTFILE`. File data berizin `600`. |
 | 🩺 **`nzr doctor` `bench` `demo`** | Diagnosis, pengukuran biaya prompt, pratinjau semua tampilan. |
+| 🚪 **Keluar/masuk theme** | `nzr exit` kembali ke prompt bawaan zsh; ketik `nzr` untuk memuat theme lagi. Tanpa menutup terminal. |
 | 🧰 **Fungsi bantu** | `mkcd` · `up` · `bak` · `extract` |
 
 ---
@@ -45,18 +46,20 @@ Prompt 4 baris: baris error di atas, lalu tiga baris klasik.
 
 ```bash
 git clone https://github.com/nanang55550-star/terminal-nzr-theme.git
-
 cd terminal-nzr-theme
-
 bash install.sh
-
 exec zsh
-
 ```
 
+Installer akan menanyakan apakah zsh dijadikan shell otomatis, supaya theme termuat saat terminal dibuka tanpa mengetik `exec zsh`:
 
+| Lingkungan | Yang dilakukan installer |
+|---|---|
+| **Termux** | `chsh -s zsh` (cara resmi Termux; membuat symlink `~/.termux/shell`) |
+| **Acode / bash / desktop Linux** | menambah dua baris ke `~/.bashrc` (cadangan dibuat) |
+| **sh / ash / dash** | menambah dua baris ke `~/.profile` |
+| **zsh sudah default** (mis. macOS) | tidak mengubah apa pun |
 
-Lepas theme: `bash install.sh --uninstall` (hanya dua baris milik theme yang dihapus dari `.zshrc`, dengan cadangan).
 
 ### Font
 Simbol powerline butuh **Nerd Font / Powerline font**. Jalankan `nzr font` untuk mengetesnya dan melihat cara memasang di OS-mu. Termux umumnya sudah menampilkannya dengan benar.
@@ -72,6 +75,19 @@ Simbol powerline butuh **Nerd Font / Powerline font**. Jalankan `nzr font` untuk
 | **macOS** | Tes otomatis dijalankan di CI (`.github/workflows/tests.yml`); RAM dibaca dari `vm_stat`; notifikasi lewat `osascript`; tema memakai 256 warna di Terminal.app |
 | **Windows** | Lewat **WSL** (sama seperti Linux). PowerShell/CMD tidak didukung |
 | **Shell lain** | Hanya zsh. `display.sh` otomatis pindah ke zsh bila dijalankan dengan bash |
+
+---
+
+## 🚪 Keluar dan masuk theme
+
+```
+nzr exit    →  keluar dari theme, kembali ke prompt bawaan zsh
+nzr         →  (saat theme nonaktif) memuat theme NZR lagi
+```
+
+Caranya shell diganti dengan zsh baru (`exec`) yang melewati theme, sehingga hasilnya benar-benar bersih: tanpa hook, plugin, atau warna dari theme. Folder kerja tetap sama dan riwayat sesi disimpan dulu. Job di latar belakang tetap berjalan tapi tidak lagi terdaftar di shell baru (ada peringatannya). Efeknya hanya untuk sesi itu: terminal baru tetap memuat theme.
+
+Berguna juga untuk debugging: `NZR_OFF=1 zsh` membuka zsh bersih tanpa theme.
 
 ---
 
@@ -122,6 +138,7 @@ nzr demo               pratinjau semua tampilan baris error
 nzr config             semua pengaturan aktif
 nzr set KEY NILAI      ubah pengaturan (langsung aktif + tersimpan)
 nzr font               tes simbol powerline
+nzr exit               keluar dari theme → prompt bawaan  (ketik nzr untuk memuat lagi)
 nzr notify-test        uji notifikasi
 nzr update             git pull
 fix                    perbaiki perintah terakhir yang gagal
@@ -134,6 +151,7 @@ fix                    perbaiki perintah terakhir yang gagal
 ## 🔒 Privasi dan keamanan
 
 - **`nzr stats`** mencatat HANYA: waktu, kode exit, durasi, dan **nama** perintah (kata pertama, tanpa argumen, path, URL, atau token). Disimpan lokal di `~/.local/share/nzr` (folder `700`, file `600`), tidak pernah dikirim ke mana pun. Matikan: `nzr set STATS_LOG OFF`. Hapus: `nzr stats clear`.
+- Log autosuggestions kini disimpan di `~/.local/share/nzr/` (bersama statistik), bukan di dalam folder repo; log lama dipindahkan otomatis.
 - Log autosuggestions dan `HISTFILE` menyaring perintah berisi token, password, `Bearer`, API key (`ghp_`, `sk-`, `AKIA…`), dan URL `user:pass@`. Perintah itu masih bisa dipanggil lagi dengan panah atas selama sesi berjalan.
 - Teks perintah yang gagal dan judul terminal dibersihkan dari escape sequence (tidak ada eksekusi `$(...)` atau injeksi kontrol terminal).
 - Installer tidak menimpa baris `.zshrc` milikmu; hanya dua baris theme.
@@ -184,7 +202,7 @@ CI (GitHub Actions) menjalankan tes yang sama di Ubuntu dan macOS pada setiap pu
 ## 🗂 Struktur
 
 ```
-nzr.zsh            loader, definisi PROMPT, hook
+nzr.zsh            loader, definisi PROMPT, hook, nzr exit / NZR_OFF
 config.sh          semua pengaturan
 display.sh         tampilan startup (bisa dijalankan lewat bash/zsh)
 install.sh         installer universal (--uninstall)
@@ -200,6 +218,12 @@ tests/             test suite + fixture golden
 ```
 
 ---
+
+## 📝 Catatan perubahan v3.1
+
+- **Baru:** `nzr exit` / `nzr` (keluar-masuk theme) · installer mengatur shell otomatis (Termux `chsh`, bash `~/.bashrc`, sh `~/.profile`) · installer ikut melepas snippet saat `--uninstall`
+- **Diperbaiki:** installer tidak lagi `chmod +x` file repo (penyebab `main ✗15` setelah instalasi dan risiko `nzr update` gagal) · headline tidak lagi tertumpuk vertikal di layar sempit (turun ke font lebih kecil, lalu teks biasa) · log autosuggestions pindah dari folder repo ke folder data privat (dengan migrasi) · URL clone di README · tes `nzr set` tidak lagi bergantung pada isi `config.sh` milik pengguna
+- **Teruji di:** Termux (ARM64), Ubuntu, Alpine/Acode
 
 ## 📝 Catatan perubahan v3.0
 
