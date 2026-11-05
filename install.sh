@@ -22,6 +22,50 @@ ok()   { printf "${GREEN}${BOLD}✓${R}  %s\n" "$1"; }
 warn() { printf "${YELLOW}${BOLD}⚠${R}  %s\n" "$1"; }
 err()  { printf "${RED}${BOLD}✗${R}  %s\n" "$1" >&2; }
 die()  { err "$1"; exit 1; }
+
+# ─── INPUT & KONFIGURASI AMAN ─────────────────────────────────────
+# Baca input. Stdin tertutup / EOF (mis. `curl ... | bash`) = pakai nilai default,
+# bukan keluar diam-diam karena `set -e`.
+ask() {   # <prompt> <nama-variabel>
+  local __a=""
+  read -r -p "$1" __a || __a=""
+  printf -v "$2" '%s' "$__a"
+}
+
+# config.sh DI-SOURCE oleh shell, jadi teks dari pengguna tidak boleh membawa kutip,
+# $, `, \, ;, | dan sejenisnya. Hanya huruf/angka (termasuk Unicode), spasi, dan
+# , . _ ! ? : @ + -   (aturan yang sama dengan `nzr set`).
+sanitize_text() {   # <teks> [maks-panjang]  → mencetak teks bersih
+  local v="${1//[^[:alnum:] ,._!?:@+-]/}"
+  printf '%s' "${v:0:${2:-40}}"
+}
+
+_sed_inplace() {
+  local pattern="$1" file="$2"
+  if sed --version &>/dev/null 2>&1; then
+    # GNU sed (Linux, Termux)
+    sed -i "$pattern" "$file"
+  else
+    # BSD sed (macOS)
+    sed -i '' "$pattern" "$file"
+  fi
+}
+
+# Tulis KEY="nilai" ke config.sh. Nilai yang tidak aman DITOLAK (bukan di-escape),
+# komentar di belakang nilai dipertahankan, dan KEY yang belum ada ditambahkan.
+_set_config() {   # <KEY> <nilai>
+  local key="$1" val="$2" re='^[[:alnum:] ,._!?:@+-]*$'
+  if ! [[ "$val" =~ $re ]]; then
+    warn "Nilai $key mengandung karakter tidak aman, dilewati"; return 1
+  fi
+  if grep -q "^${key}=\"" "$CONFIG_FILE"; then
+    _sed_inplace "s|^${key}=\"[^\"]*\"|${key}=\"${val}\"|" "$CONFIG_FILE"
+  elif grep -q "^${key}=" "$CONFIG_FILE"; then
+    _sed_inplace "s|^${key}=[^ #]*|${key}=\"${val}\"|" "$CONFIG_FILE"
+  else
+    printf '%s="%s"\n' "$key" "$val" >> "$CONFIG_FILE"
+  fi
+}
 step() { printf "\n${CYAN}${BOLD}── %s${R}\n" "$1"; }
 
 # ─── BANNER ───────────────────────────────────────────────────────
@@ -91,14 +135,16 @@ install_pkg() {
   fi
 
   info "Menginstall $name..."
+  local out="" rc=0
+  # `|| rc=$?` agar kegagalan tidak mematikan skrip (set -e) sebelum dicek di bawah
   case "$PKG_MGR" in
-    pkg)    pkg install -y "$t_name" 2>/dev/null ;;
-    brew)   brew install "$b_name"   2>/dev/null ;;
-    apt)    $SUDO apt-get install -y "$a_name" 2>/dev/null ;;
-    pacman) $SUDO pacman -S --noconfirm "$p_name" 2>/dev/null ;;
-    dnf)    $SUDO dnf install -y "$a_name" 2>/dev/null ;;
-    zypper) $SUDO zypper install -y "$a_name" 2>/dev/null ;;
-    apk)    $SUDO apk add --no-cache "$a_name" 2>/dev/null ;;
+    pkg)    out=$(pkg install -y "$t_name" 2>&1)                 || rc=$? ;;
+    brew)   out=$(brew install "$b_name" 2>&1)                   || rc=$? ;;
+    apt)    out=$($SUDO apt-get install -y "$a_name" 2>&1)       || rc=$? ;;
+    pacman) out=$($SUDO pacman -S --noconfirm "$p_name" 2>&1)    || rc=$? ;;
+    dnf)    out=$($SUDO dnf install -y "$a_name" 2>&1)           || rc=$? ;;
+    zypper) out=$($SUDO zypper install -y "$a_name" 2>&1)        || rc=$? ;;
+    apk)    out=$($SUDO apk add --no-cache "$a_name" 2>&1)       || rc=$? ;;
     none|unknown)
       warn "Tidak bisa auto-install $name. Install manual lalu ulangi."
       return 1
@@ -107,9 +153,10 @@ install_pkg() {
 
   if command -v "$name" &>/dev/null; then
     ok "$name berhasil diinstall"
-  else
-    warn "$name gagal diinstall — beberapa fitur mungkin tidak muncul"
+    return 0
   fi
+  warn "$name gagal diinstall (kode $rc)${out:+: $(printf '%s' "$out" | tail -n 1)}"
+  return 1
 }
 
 # ─── PATHS ────────────────────────────────────────────────────────
@@ -202,13 +249,13 @@ info "Terdeteksi: OS=$OS | Package manager=$PKG_MGR"
 step "Mengecek dependencies"
 
 # zsh — wajib
-install_pkg "zsh" "zsh" "zsh" "zsh" "zsh"
+install_pkg "zsh" "zsh" "zsh" "zsh" "zsh" || die "zsh wajib dan gagal dipasang. Pasang manual lalu jalankan ulang installer."
 
 # git — wajib untuk clone plugin
-install_pkg "git" "git" "git" "git" "git"
+install_pkg "git" "git" "git" "git" "git" || die "git wajib (untuk memasang plugin) dan gagal dipasang. Pasang manual lalu jalankan ulang."
 
 # figlet — opsional (headline)
-install_pkg "figlet" "figlet" "figlet" "figlet" "figlet"
+install_pkg "figlet" "figlet" "figlet" "figlet" "figlet" || warn "figlet dilewati: headline tampil sebagai teks biasa"
 
 # lolcat — opsional (rainbow color)
 if ! command -v lolcat &>/dev/null; then
@@ -229,23 +276,26 @@ step "Personalisasi"
 printf "\n"
 
 # Headline text
-read -r -p "  Headline text [NZR-RD]: " headline
-headline="${headline:-NZR-RD}"
+ask "  Headline text [NZR-RD]: " headline
+headline="$(sanitize_text "$headline" 24)"; headline="${headline:-NZR-RD}"
 
 # Nama user
-read -r -p "  Nama kamu (untuk welcome box): " username
+ask "  Nama kamu (untuk welcome box): " username
 # Jika kosong, pakai $USER atau fallback
-username="${username:-${USER:-user}}"
+username="$(sanitize_text "${username:-${USER:-user}}" 24)"; username="${username:-user}"
 
 # Welcome message
-read -r -p "  Pesan selamat datang [Selamat datang, ]: " welcome_msg
-welcome_msg="${welcome_msg:-Selamat datang, }"
+ask "  Pesan selamat datang [Selamat datang, ]: " welcome_msg
+welcome_msg="$(sanitize_text "${welcome_msg:-Selamat datang,}" 40)"
+welcome_msg="${welcome_msg:-Selamat datang,}"
+while [[ "$welcome_msg" == *" " ]]; do welcome_msg="${welcome_msg% }"; done
+welcome_msg+=" "                       # tepat satu spasi: dipakai sebagai awalan sebelum nama
 
 # Warna headline
 printf "\n  Pilih warna headline:\n"
 printf "  1) cyan (default)  2) blue  3) green\n"
 printf "  4) yellow          5) magenta  6) lolcat (rainbow)\n"
-read -r -p "  Pilihan [1]: " color_choice
+ask "  Pilihan [1]: " color_choice
 case "${color_choice:-1}" in
   2) hl_color="blue"    ;;
   3) hl_color="green"   ;;
@@ -257,25 +307,25 @@ esac
 
 # Fitur on/off
 printf "\n"
-read -r -p "  Aktifkan Autosuggestions? [Y/n]: " autosug
+ask "  Aktifkan Autosuggestions? [Y/n]: " autosug
 [[ "${autosug:-y}" =~ ^[Nn]$ ]] && AUTOSUG="OFF" || AUTOSUG="ON"
 
-read -r -p "  Aktifkan Syntax Highlighting? [Y/n]: " syntax
+ask "  Aktifkan Syntax Highlighting? [Y/n]: " syntax
 [[ "${syntax:-y}" =~ ^[Nn]$ ]] && SYNTAX="OFF" || SYNTAX="ON"
 
-read -r -p "  Tampilkan Logo? [Y/n]: " show_logo
+ask "  Tampilkan Logo? [Y/n]: " show_logo
 [[ "${show_logo:-y}" =~ ^[Nn]$ ]] && LOGO="OFF" || LOGO="ON"
 
-read -r -p "  Tampilkan Headline? [Y/n]: " show_hl
+ask "  Tampilkan Headline? [Y/n]: " show_hl
 [[ "${show_hl:-y}" =~ ^[Nn]$ ]] && HEADLINE="OFF" || HEADLINE="ON"
 
-read -r -p "  Tampilkan System Info? [Y/n]: " show_sys
+ask "  Tampilkan System Info? [Y/n]: " show_sys
 [[ "${show_sys:-y}" =~ ^[Nn]$ ]] && SYSINFO="OFF" || SYSINFO="ON"
 
-read -r -p "  Tampilkan baris error di atas prompt (prompt 4 baris)? [Y/n]: " show_err
+ask "  Tampilkan baris error di atas prompt (prompt 4 baris)? [Y/n]: " show_err
 [[ "${show_err:-y}" =~ ^[Nn]$ ]] && ERRLINE="OFF" || ERRLINE="ON"
 
-read -r -p "  Notifikasi saat perintah lama (>= 30 detik) selesai? [Y/n]: " notif
+ask "  Notifikasi saat perintah lama (>= 30 detik) selesai? [Y/n]: " notif
 [[ "${notif:-y}" =~ ^[Nn]$ ]] && NOTIF="OFF" || NOTIF="ON"
 
 # ─── TULIS CONFIG ────────────────────────────────────────────────
@@ -283,24 +333,7 @@ step "Menyimpan konfigurasi"
 
 # Fungsi update key di config.sh secara portable
 # (sed -i berbeda antara GNU dan BSD/macOS)
-_sed_inplace() {
-  local pattern="$1" file="$2"
-  if sed --version &>/dev/null 2>&1; then
-    # GNU sed (Linux, Termux)
-    sed -i "$pattern" "$file"
-  else
-    # BSD sed (macOS)
-    sed -i '' "$pattern" "$file"
-  fi
-}
 
-_set_config() {
-  local key="$1" val="$2"
-  # Escape karakter khusus untuk sed
-  local escaped_val
-  escaped_val=$(printf '%s' "$val" | sed 's/[\/&]/\\&/g')
-  _sed_inplace "s|^${key}=.*|${key}=\"${escaped_val}\"|" "$CONFIG_FILE"
-}
 
 _set_config "HEADLINE_TEXT"      "$headline"
 _set_config "USER_NAME"          "$username"
@@ -375,7 +408,7 @@ if [[ "$cur_shell" == "zsh" ]]; then
   SHELL_RESULT="sudah"
 else
   info "Shell terminal ini: $cur_shell (bukan zsh, jadi theme belum termuat otomatis)"
-  read -r -p "  Jadikan zsh otomatis saat terminal dibuka? [Y/n]: " auto_zsh
+  ask "  Jadikan zsh otomatis saat terminal dibuka? [Y/n]: " auto_zsh
   if [[ "${auto_zsh:-y}" =~ ^[Nn]$ ]]; then
     info "Dilewati. Muat manual dengan: exec zsh"
   elif [[ "${OS:-}" == "termux" ]] && command -v chsh &>/dev/null; then
