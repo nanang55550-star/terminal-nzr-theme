@@ -103,7 +103,7 @@ fi
 : "${NZR_COLOR_DEPTH:=auto}"       # auto | truecolor | 256
 : "${STATS_LOG:=ON}"               # catat NAMA perintah (tanpa argumen) untuk nzr stats
 
-NZR_VERSION="3.1.0"
+NZR_VERSION="3.1.1"
 
 # ─── AUTOSUGGESTIONS LOG SYSTEM ───────────────────────────────────
 # File log terpisah dari $HISTFILE — khusus untuk feed autosuggestions
