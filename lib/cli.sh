@@ -66,6 +66,7 @@ _nzr_cli_help() {
   nzr notify-test      kirim notifikasi percobaan
   nzr log              info log autosuggestions
   nzr update           tarik versi terbaru (git pull)
+  nzr exit             keluar dari theme → prompt bawaan zsh (di sana, ketik: nzr  → memuat lagi)
   nzr reload           muat ulang zsh
 
   Alias: r = refresh tampilan + config · rr = reload config · rd = tampilan saja
@@ -324,6 +325,8 @@ nzr() {
     update)
       if [[ -d "$NZR_DIR/.git" ]]; then git -C "$NZR_DIR" pull --ff-only && print "Selesai. Jalankan: nzr reload"
       else print -u2 "nzr: $NZR_DIR bukan repo git (instal lewat git clone untuk fitur update)"; return 1; fi ;;
+    exit)     print -P "%F{cyan}NZR:%f keluar dari theme → prompt bawaan zsh.  Ketik %Bnzr%b untuk memuatnya lagi."
+              _nzr_reexec off ;;
     reload)   exec zsh ;;
     *) print -u2 "nzr: perintah '$sub' tidak dikenal. Coba: nzr help"; return 1 ;;
   esac
