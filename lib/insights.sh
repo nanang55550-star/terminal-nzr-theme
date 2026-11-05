@@ -15,7 +15,7 @@
 # token. File ada di folder privat (izin 700/600), tidak pernah dikirim ke mana
 # pun. Matikan: nzr set STATS_LOG OFF · hapus: nzr stats clear
 
-typeset -g  _NZR_DATA="${NZR_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/nzr}"
+typeset -g  _NZR_DATA="${NZR_DATA_HOME:-${NZR_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/nzr}}"
 typeset -g  _NZR_STATS_FILE="$_NZR_DATA/stats.tsv"
 typeset -gi _NZR_STATS_N=0
 # Perintah bawaan theme: tidak menimpa "perintah terakhir" yang dianalisis fix/nzr last
