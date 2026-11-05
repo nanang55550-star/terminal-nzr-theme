@@ -28,7 +28,7 @@ step() { printf "\n${CYAN}${BOLD}── %s${R}\n" "$1"; }
 banner() {
   printf "\n${CYAN}${BOLD}"
   printf "╔══════════════════════════════════════════╗\n"
-  printf "║       NZR THEME INSTALLER v3.0           ║\n"
+  printf "║       NZR THEME INSTALLER v3.1           ║\n"
   printf "║   Android · Linux · macOS · Universal    ║\n"
   printf "╚══════════════════════════════════════════╝\n"
   printf "${R}\n"
@@ -121,14 +121,45 @@ CONFIG_FILE="$THEME_DIR/config.sh"
 # ─── VALIDASI ─────────────────────────────────────────────────────
 [[ -f "$CONFIG_FILE" ]] || die "config.sh tidak ditemukan di $THEME_DIR"
 
-# ─── HAPUS BLOK THEME DARI .zshrc (portable GNU/BSD sed) ──────────
-# Hanya dua baris milik theme (penanda + baris source), bukan sampai baris kosong.
-remove_zshrc_entry() {
+# ─── HAPUS BLOK BERTANDA (portable GNU/BSD sed) ───────────────────
+# Hanya DUA baris milik theme (penanda + baris sesudahnya), bukan sampai baris kosong.
+remove_marked_block() {   # <file> <penanda>
   if sed --version &>/dev/null 2>&1; then
-    sed -i '/# NZR Theme/{N;d;}' "$ZSHRC"
+    sed -i "/$2/{N;d;}" "$1"
   else
-    sed -i '' '/# NZR Theme/{N;d;}' "$ZSHRC"
+    sed -i '' "/$2/{N;d;}" "$1"
   fi
+}
+remove_zshrc_entry() { remove_marked_block "$ZSHRC" "# NZR Theme"; }
+
+# ─── SHELL OTOMATIS ───────────────────────────────────────────────
+# Tanpa ini, terminal yang membuka bash/ash tidak pernah membaca ~/.zshrc, jadi theme
+# baru muncul setelah mengetik `exec zsh`.
+SHELL_MARK="# NZR zsh-switch"
+SHELL_LINE='[ -t 0 ] && [ -z "$ZSH_VERSION" ] && [ -z "$NZR_NO_ZSH" ] && command -v zsh >/dev/null 2>&1 && exec zsh'
+
+# Shell yang benar-benar dipakai terminal ini.
+# Termux memilih shell lewat symlink ~/.termux/shell, bukan lewat $SHELL.
+current_login_shell() {
+  local t
+  if [[ "${OS:-}" == "termux" && ( -L "$HOME/.termux/shell" || -e "$HOME/.termux/shell" ) ]]; then
+    t="$(readlink "$HOME/.termux/shell" 2>/dev/null || true)"
+    [[ -n "$t" ]] && { basename "$t"; return; }
+  fi
+  basename "${SHELL:-sh}"
+}
+
+remove_shell_snippets() {
+  local f removed=0
+  for f in "$HOME/.bashrc" "$HOME/.profile"; do
+    if [[ -f "$f" ]] && grep -qF "$SHELL_MARK" "$f"; then
+      cp "$f" "$f.nzr-backup"
+      remove_marked_block "$f" "$SHELL_MARK"
+      ok "Snippet shell otomatis dilepas dari $f  (cadangan: $f.nzr-backup)"
+      removed=1
+    fi
+  done
+  return 0
 }
 
 # ─── JANGAN JALANKAN DENGAN sudo ──────────────────────────────────
@@ -151,10 +182,14 @@ if [[ "${1:-}" == "--uninstall" ]]; then
     cp "$ZSHRC" "$ZSHRC.nzr-backup"
     remove_zshrc_entry
     ok "Theme dilepas dari $ZSHRC  (cadangan: $ZSHRC.nzr-backup)"
+    remove_shell_snippets
     info "File theme di $THEME_DIR tidak dihapus. Hapus manual bila perlu. Data statistik: ~/.local/share/nzr"
   else
     info "Tidak ada entri NZR Theme di $ZSHRC"
+    remove_shell_snippets
   fi
+  [[ "${OS:-}" == "termux" ]] || true
+  info "Catatan: shell default (mis. chsh di Termux) tidak diubah kembali. Kembalikan dengan: chsh -s bash"
   exit 0
 fi
 
@@ -188,12 +223,6 @@ if [[ "$OS" == "termux" ]] && ! command -v termux-notification &>/dev/null; then
 fi
 
 ok "Dependencies selesai"
-
-# ─── PERMISSIONS ──────────────────────────────────────────────────
-step "Mengatur permissions"
-chmod +x "$THEME_DIR"/*.sh 2>/dev/null || true
-chmod +x "$THEME_DIR"/lib/*.sh 2>/dev/null || true
-ok "Permissions diatur"
 
 # ─── PERSONALISASI INTERAKTIF ─────────────────────────────────────
 step "Personalisasi"
@@ -302,7 +331,7 @@ fi
 # Tambah entri baru
 cat >> "$ZSHRC" <<EOF
 
-# NZR Theme — https://github.com/nzr-rd/terminal-nzr-theme
+# NZR Theme — https://github.com/nanang55550-star/terminal-nzr-theme
 source "$THEME_DIR/nzr.zsh"
 EOF
 
@@ -337,6 +366,47 @@ if [[ "$SYNTAX" == "ON" ]]; then
   fi
 fi
 
+# ─── SHELL OTOMATIS ──────────────────────────────────────────────
+step "Shell otomatis"
+SHELL_RESULT=""
+cur_shell="$(current_login_shell)"
+if [[ "$cur_shell" == "zsh" ]]; then
+  ok "zsh sudah menjadi shell default, tidak ada yang perlu diubah"
+  SHELL_RESULT="sudah"
+else
+  info "Shell terminal ini: $cur_shell (bukan zsh, jadi theme belum termuat otomatis)"
+  read -r -p "  Jadikan zsh otomatis saat terminal dibuka? [Y/n]: " auto_zsh
+  if [[ "${auto_zsh:-y}" =~ ^[Nn]$ ]]; then
+    info "Dilewati. Muat manual dengan: exec zsh"
+  elif [[ "${OS:-}" == "termux" ]] && command -v chsh &>/dev/null; then
+    if chsh -s zsh >/dev/null 2>&1; then
+      ok "chsh -s zsh berhasil (cara resmi Termux)"; SHELL_RESULT="chsh"
+    else
+      warn "chsh gagal. Jalankan manual: chsh -s zsh"
+    fi
+  else
+    case "$cur_shell" in
+      bash)              shell_target="$HOME/.bashrc" ;;
+      sh|ash|dash|ksh)   shell_target="$HOME/.profile" ;;
+      *)                 shell_target="" ;;
+    esac
+    if [[ -z "$shell_target" ]]; then
+      warn "Shell '$cur_shell' belum didukung otomatis. Muat manual dengan: exec zsh"
+    elif grep -qF "$SHELL_MARK" "$shell_target" 2>/dev/null; then
+      ok "Sudah terpasang di $shell_target"; SHELL_RESULT="snippet"
+    else
+      backup_note=""
+      if [[ -f "$shell_target" ]]; then
+        cp "$shell_target" "$shell_target.nzr-backup"; backup_note="  (cadangan: $shell_target.nzr-backup)"
+      fi
+      printf '\n%s\n%s\n' "$SHELL_MARK" "$SHELL_LINE" >> "$shell_target"
+      ok "Ditambahkan ke $shell_target$backup_note"
+      info "Lewati sementara bila perlu: NZR_NO_ZSH=1 $cur_shell"
+      SHELL_RESULT="snippet"
+    fi
+  fi
+fi
+
 # ─── SELESAI ─────────────────────────────────────────────────────
 printf "\n${GREEN}${BOLD}"
 printf "╔══════════════════════════════════════════╗\n"
@@ -344,7 +414,14 @@ printf "║        INSTALASI SELESAI! 🎉             ║\n"
 printf "╚══════════════════════════════════════════╝\n"
 printf "${R}\n"
 
-printf "  ${CYAN}Aktifkan sekarang:${R}  ${YELLOW}exec zsh${R}\n"
+if [[ "$SHELL_RESULT" == "chsh" ]]; then
+  printf "  ${CYAN}Aktifkan:${R}           ${YELLOW}tutup lalu buka ulang Termux${R}  ${CYAN}(atau: exec zsh)${R}\n"
+elif [[ "$SHELL_RESULT" == "snippet" ]]; then
+  printf "  ${CYAN}Aktifkan:${R}           ${YELLOW}buka terminal baru${R}  ${CYAN}(atau: exec zsh)${R}\n"
+else
+  printf "  ${CYAN}Aktifkan sekarang:${R}  ${YELLOW}exec zsh${R}\n"
+fi
+printf "  ${CYAN}Keluar/masuk theme:${R} ${YELLOW}nzr exit${R}  /  ${YELLOW}nzr${R}\n"
 printf "  ${CYAN}Edit config:${R}        ${YELLOW}nano $CONFIG_FILE${R}\n"
 printf "  ${CYAN}Jalankan manual:${R}    ${YELLOW}zsh $THEME_DIR/display.sh${R}\n"
 printf "  ${CYAN}Semua perintah:${R}     ${YELLOW}nzr help${R}   ${CYAN}Cek kondisi:${R} ${YELLOW}nzr doctor${R}\n"
